@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="手術室管理">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a56db">
+<meta name="application-name" content="手術室管理系統">
+<link rel="manifest" id="pwa-manifest">
+
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>手術室業務量管理系統</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f0eeea;--card:#fff;--border:rgba(0,0,0,0.09);
+  --text:#18181a;--text2:#6b6a65;--text3:#9b9a95;
+  --blue:#1a56db;--blue-l:#eff6ff;--blue-m:#3b82f6;
+  --teal:#0d7a5f;--teal-l:#ecfdf5;--teal-m:#10b981;
+  --amber:#92400e;--amber-l:#fffbeb;--amber-m:#f59e0b;
+  --red:#991b1b;--red-l:#fef2f2;--red-m:#ef4444;
+  --purple:#5b21b6;--purple-l:#f5f3ff;--purple-m:#8b5cf6;
+  --green:#166534;--green-l:#f0fdf4;--green-m:#22c55e;
+  --radius:12px;--radius-sm:8px;--radius-xs:6px;
+  --shadow:0 1px 4px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-lg:0 4px 16px rgba(0,0,0,0.10);
+  --sidebar:260px;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#0f0f11;--card:#1c1c1f;--border:rgba(255,255,255,0.08);
+  --text:#f0eeea;--text2:#9b9a95;--text3:#5a5955;
+  --blue-l:#1e3a5f;--blue-m:#60a5fa;
+  --teal-l:#064e3b;--teal-m:#34d399;
+  --amber-l:#451a03;--amber-m:#fbbf24;
+  --red-l:#450a0a;--red-m:#f87171;
+  --purple-l:#2e1065;--purple-m:#a78bfa;
+  --green-l:#052e16;--green-m:#4ade80;
+}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Noto Sans TC',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
+input,select,textarea,button{font-family:inherit;font-size:14px;color:var(--text)}
+input[type=number]::-webkit-inner-spin-button{opacity:1}
+
+/* ── LAYOUT ── */
+.layout{display:flex;min-height:100vh}
+.sidebar{padding-bottom:env(safe-area-inset-bottom);width:var(--sidebar);background:var(--card);border-right:0.5px solid var(--border);position:fixed;top:0;left:0;bottom:0;overflow-y:auto;z-index:200;display:flex;flex-direction:column;transition:transform .25s}
+.sidebar-header{padding:20px 16px 12px;border-bottom:0.5px solid var(--border)}
+.sidebar-logo{font-size:15px;font-weight:700;color:var(--text)}
+.sidebar-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.sidebar-year{margin:12px 16px 0;background:var(--blue-l);border-radius:var(--radius-sm);padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.year-badge{font-size:13px;font-weight:700;color:var(--blue)}
+.nav-section{padding:12px 10px 4px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;margin:1px 6px;border-radius:var(--radius-xs);cursor:pointer;color:var(--text2);font-size:13px;transition:all .15s}
+.nav-item:hover{background:var(--bg);color:var(--text)}
+.nav-item.active{background:var(--blue-l);color:var(--blue);font-weight:600}
+.nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.sidebar-bottom{padding:12px;border-top:0.5px solid var(--border);margin-top:auto}
+
+.main{margin-left:var(--sidebar);flex:1;min-height:100vh;display:flex;flex-direction:column}
+.topbar{padding-top:max(12px, env(safe-area-inset-top));background:var(--card);border-bottom:0.5px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.topbar h1{font-size:16px;font-weight:600;flex:1}
+.page{padding:24px;flex:1}
+.page-section{display:none}.page-section.active{display:block}
+
+/* ── COMPONENTS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-xs);border:0.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--bg)}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{opacity:.9}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-danger{border-color:var(--red-m);color:var(--red-m)}
+.btn-danger:hover{background:var(--red-l)}
+.btn-success{border-color:var(--teal-m);color:var(--teal)}
+.btn-success:hover{background:var(--teal-l)}
+
+.card{background:var(--card);border:0.5px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px}
+.card-title{font-size:13px;font-weight:600;color:var(--text2)}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--card);border:0.5px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);cursor:pointer;transition:box-shadow .15s}
+.kpi:hover{box-shadow:var(--shadow-lg)}
+.kpi-label{font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.kpi-value{font-size:26px;font-weight:700;line-height:1.1}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.kpi-diff{font-size:11px;font-weight:600;margin-top:4px}
+.diff-up{color:var(--teal-m)}.diff-dn{color:var(--red-m)}.diff-eq{color:var(--text3)}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
+.mb16{margin-bottom:16px}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;border-radius:var(--radius-sm);border:0.5px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:9px 12px;background:var(--bg);color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:0.5px solid var(--border)}
+td{padding:9px 12px;border-bottom:0.5px solid var(--border);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg)}
+td input{width:100%;border:0.5px solid var(--border);border-radius:4px;padding:4px 8px;background:var(--bg);color:var(--text);text-align:right}
+td input:focus{outline:none;border-color:var(--blue-m)}
+
+/* PILL */
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.pill-red{background:var(--red-l);color:var(--red)}
+.pill-amber{background:var(--amber-l);color:var(--amber)}
+.pill-green{background:var(--green-l);color:var(--green)}
+.pill-blue{background:var(--blue-l);color:var(--blue)}
+.pill-teal{background:var(--teal-l);color:var(--teal)}
+
+/* FORM */
+.form-group{margin-bottom:14px}
+.form-label{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:4px;display:block}
+.form-input{width:100%;padding:9px 12px;border:0.5px solid var(--border);border-radius:var(--radius-xs);background:var(--card);color:var(--text);transition:border .15s}
+.form-input:focus{outline:none;border-color:var(--blue-m)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--card);border-radius:var(--radius);padding:24px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);transform:translateY(20px);transition:transform .2s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{cursor:pointer;font-size:20px;color:var(--text3);line-height:1}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:var(--card);padding:12px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;z-index:1000;transform:translateY(80px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:var(--teal)}
+.toast.error{background:var(--red-m)}
+
+/* YEAR COMPARE */
+.compare-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--blue-l);border-radius:var(--radius-sm);margin-bottom:20px;flex-wrap:wrap}
+.compare-year{display:flex;align-items:center;gap:6px}
+.compare-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* CHART */
+.chart-wrap{position:relative;width:100%}
+
+/* MOBILE MENU */
+.mobile-menu-btn{display:none;padding:8px;cursor:pointer;color:var(--text2);font-size:20px}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:150}
+
+/* FILE UPLOAD */
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:32px;text-align:center;cursor:pointer;transition:all .2s}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--blue-m);background:var(--blue-l)}
+.upload-zone input{display:none}
+
+/* DIFF INDICATOR */
+.diff-arrow{display:inline-flex;align-items:center;gap:2px;font-size:11px;font-weight:600}
+
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-overlay.open{display:block}
+  .main{margin-left:0}
+  .mobile-menu-btn{display:flex}
+  .grid-2,.grid-3,.form-row{grid-template-columns:1fr}
+  .page{padding:16px}
+}
+</style>
+<script src="https://apis.google.com/js/api.js" async defer onload="gapiLoaded()"></script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="gisLoaded()"></script>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MOBILE OVERLAY -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<div class="layout">
+
+<!-- ══ SIDEBAR ══ -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">🏥 手術室管理系統</div>
+    <div class="sidebar-sub">OR Management System</div>
+  </div>
+  <div class="sidebar-year" id="currentYearBadge">
+    <span style="font-size:12px;color:var(--text2)">當前年度</span>
+    <span class="year-badge" id="badgeYear">114年</span>
+    <button class="btn btn-sm" onclick="openYearSwitcher()" style="padding:4px 10px;font-size:11px">切換</button>
+  </div>
+
+  <div class="nav-section">主要功能</div>
+  <div class="nav-item active" onclick="goPage('overview',this)"><span class="nav-icon">📊</span>業務量總覽</div>
+  <div class="nav-item" onclick="goPage('dept',this)"><span class="nav-icon">🔬</span>科別分析</div>
+  <div class="nav-item" onclick="goPage('time',this)"><span class="nav-icon">⏰</span>時間分析</div>
+  <div class="nav-item" onclick="goPage('room',this)"><span class="nav-icon">🏠</span>房間使用率</div>
+  <div class="nav-item" onclick="goPage('emerg',this)"><span class="nav-icon">🚨</span>急診業務量</div>
+  <div class="nav-item" onclick="goPage('davinci',this)"><span class="nav-icon">🤖</span>達文西手術</div>
+  <div class="nav-item" onclick="goPage('cvs',this)"><span class="nav-icon">❤️</span>心臟外科</div>
+
+  <div class="nav-section">年度管理</div>
+  <div class="nav-item" onclick="goPage('compare',this)"><span class="nav-icon">📈</span>年度比較</div>
+  <div class="nav-item" onclick="goPage('edit',this)"><span class="nav-icon">✏️</span>資料編輯</div>
+  <div class="nav-item" onclick="goPage('import',this)"><span class="nav-icon">📥</span>匯入資料</div>
+
+  <div class="sidebar-bottom">
+    <button class="btn btn-sm" style="width:100%;justify-content:center;margin-bottom:6px" onclick="driveSync()" id="drive-btn">☁️ 雲端同步</button>
+    <button class="btn btn-sm" style="width:100%;justify-content:center;margin-bottom:6px" onclick="exportData()">💾 匯出備份</button>
+    <button class="btn btn-sm" style="width:100%;justify-content:center" onclick="goPage('import',null);closeSidebar()" id="sidebar-install-btn">📲 安裝到手機</button>
+    <div id="sync-status" style="font-size:10px;color:var(--text3);text-align:center;margin-top:6px;min-height:14px"></div>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+  <div class="topbar">
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+    <h1 id="pageTitle">業務量總覽</h1>
+    <div style="display:flex;gap:8px;align-items:center" id="topActions">
+      <span id="topYearLabel" style="font-size:12px;color:var(--text3)"></span>
+      <button class="btn btn-sm btn-primary" onclick="goPage('compare',null)">📈 年度比較</button>
+    </div>
+  </div>
+
+  <div class="page">
+
+  <!-- ══ 業務量總覽 ══ -->
+  <div class="page-section active" id="page-overview">
+    <div class="kpi-grid" id="kpi-overview"></div>
+    <div class="grid-2 mb16">
+      <div class="card">
+        <div class="card-header"><span class="card-title">月別手術量</span></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="c-monthly-ov" role="img" aria-label="月別手術量">月別趨勢。</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">手術別分布</span></div>
+        <div class="chart-wrap" style="height:220px"><canvas id="c-types-ov" role="img" aria-label="手術別">手術別分布。</canvas></div>
+      </div>
+    </div>
+    <div class="grid-2 mb16">
+      <div class="card">
+        <div class="card-header"><span class="card-title">班別業務量</span></div>
+        <div class="chart-wrap" style="height:180px"><canvas id="c-shift-ov" role="img" aria-label="班別">班別分布。</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">科別件數排行 TOP 8</span></div>
+        <div class="chart-wrap" style="height:180px"><canvas id="c-dept-ov" role="img" aria-label="科別排行">科別件數。</canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 科別分析 ══ -->
+  <div class="page-section" id="page-dept">
+    <div class="card mb16">
+      <div class="card-header"><span class="card-title">科別手術量詳細</span></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>科別</th><th>件數</th><th>佔比</th><th>平均時間(分)</th><th>逾時率</th><th>逾時件數</th></tr></thead>
+        <tbody id="dept-table-body"></tbody>
+      </table></div>
+    </div>
+    <div class="grid-2 mb16">
+      <div class="card">
+        <div class="card-header"><span class="card-title">科別逾時率</span></div>
+        <div class="chart-wrap" style="height:280px"><canvas id="c-dept-ot" role="img" aria-label="科別逾時率">科別逾時。</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">科別平均手術時間(分)</span></div>
+        <div class="chart-wrap" style="height:280px"><canvas id="c-dept-time" role="img" aria-label="科別手術時間">手術時間。</canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 時間分析 ══ -->
+  <div class="page-section" id="page-time">
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi blue-kpi" id="kpi-ontime"></div>
+      <div class="kpi" id="kpi-turnover"></div>
+      <div class="kpi" id="kpi-slot-peak"></div>
+      <div class="kpi" id="kpi-room-best"></div>
+    </div>
+    <div class="grid-2 mb16">
+      <div class="card">
+        <div class="card-header"><span class="card-title">每月 8AM 準時率</span></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c-ontime-mon" role="img" aria-label="月別準時率">準時率趨勢。</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">各房間 8AM 準時率</span></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c-ontime-room" role="img" aria-label="房間準時率">房間準時率。</canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 房間使用率 ══ -->
+  <div class="page-section" id="page-room">
+    <div class="card mb16">
+      <div class="card-header"><span class="card-title">各房間使用率（白班／小夜／大夜）</span></div>
+      <div class="chart-wrap" style="height:360px"><canvas id="c-room-chart" role="img" aria-label="房間使用率">房間使用率。</canvas></div>
+    </div>
+    <div class="card mb16">
+      <div class="card-header"><span class="card-title">使用率詳細</span></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>房間</th><th>白班</th><th>小夜</th><th>大夜</th><th>全日平均</th></tr></thead>
+        <tbody id="room-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ══ 急診 ══ -->
+  <div class="page-section" id="page-emerg">
+    <div class="kpi-grid" id="kpi-emerg"></div>
+    <div class="grid-2 mb16">
+      <div class="card">
+        <div class="card-header"><span class="card-title">三類月別趨勢</span></div>
+        <div class="chart-wrap" style="height:230px"><canvas id="c-emerg-mon" role="img" aria-label="急診月別">急診趨勢。</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">緊急/危急達成率</span></div>
+        <div id="achv-detail" style="padding:8px 0"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 達文西 ══ -->
+  <div class="page-section" id="page-davinci">
+    <div class="kpi-grid" id="kpi-dv"></div>
+    <div class="grid-2 mb16">
+      <div class="card">
+        <div class="card-header"><span class="card-title">月別業務量</span></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c-dv-mon" role="img" aria-label="達文西月別">達文西月別。</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">科別分布</span></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c-dv-dept" role="img" aria-label="達文西科別">達文西科別。</canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 心臟外科 ══ -->
+  <div class="page-section" id="page-cvs">
+    <div class="kpi-grid" id="kpi-cvs"></div>
+    <div class="card mb16">
+      <div class="card-header"><span class="card-title">CABG／ECMO／Valve 月別趨勢</span></div>
+      <div class="chart-wrap" style="height:230px"><canvas id="c-cvs-mon" role="img" aria-label="心臟外科月別">心臟外科月別。</canvas></div>
+    </div>
+  </div>
+
+  <!-- ══ 年度比較 ══ -->
+  <div class="page-section" id="page-compare">
+    <div class="card mb16" style="padding:16px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:600;color:var(--text2)">比較年度：</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="width:10px;height:10px;border-radius:50%;background:#3b82f6;display:inline-block;flex-shrink:0"></span>
+          <select class="form-input" id="cmpYearA" style="width:90px" onchange="renderCompare()"></select>
+        </div>
+        <span style="color:var(--text3)">vs</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block;flex-shrink:0"></span>
+          <select class="form-input" id="cmpYearB" style="width:90px" onchange="renderCompare()"></select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:12px;color:var(--text2)">第三年：</label>
+          <span style="width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block;flex-shrink:0"></span>
+          <select class="form-input" id="cmpYearC" style="width:90px" onchange="renderCompare()">
+            <option value="">（不選）</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="compare-content"></div>
+  </div>
+
+  <!-- ══ 資料編輯 ══ -->
+  <div class="page-section" id="page-edit">
+    <div class="card mb16">
+      <div class="card-header">
+        <span class="card-title">選擇編輯年度</span>
+        <div style="display:flex;gap:8px">
+          <select class="form-input" id="editYear" style="width:100px" onchange="loadEditYear()"></select>
+          <button class="btn btn-sm btn-success" onclick="addNewYear()">＋ 新增年度</button>
+        </div>
+      </div>
+    </div>
+    <div id="edit-content"></div>
+  </div>
+
+  <!-- ══ 匯入 ══ -->
+  <div class="page-section" id="page-import">
+      <div id="install-banner" style="display:none;margin-bottom:16px;padding:14px 16px;background:var(--blue-l);border-radius:var(--radius-sm);border:0.5px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-weight:600;font-size:13px;margin-bottom:3px">安裝到主畫面（離線使用）</div>
+            <div style="font-size:11px;color:var(--text2)">安裝後像原生 App 一樣開啟，無瀏覽器框，離線也能用</div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="install-btn" onclick="installPWA()">安裝 App</button>
+        </div>
+      </div>
+      <div id="ios-install-tip" style="display:none;margin-bottom:16px;padding:14px 16px;background:var(--amber-l);border-radius:var(--radius-sm);border:0.5px solid var(--border)">
+        <div style="font-weight:600;font-size:13px;margin-bottom:6px">iPhone / iPad 安裝步驟</div>
+        <div style="font-size:12px;color:var(--text2);line-height:2">
+          <div>1. Safari 開啟此頁面</div>
+          <div>2. 點底部 <strong>分享</strong> 按鈕（方框加箭頭圖示）</div>
+          <div>3. 選 <strong>加入主畫面</strong></div>
+          <div>4. 點右上角 <strong>新增</strong></div>
+        </div>
+      </div>
+    <div class="card mb16">
+      <div class="card-header"><span class="card-title">匯入年度資料（JSON 格式）</span></div>
+      <div class="upload-zone" onclick="document.getElementById('jsonFile').click()" id="uploadZone">
+        <input type="file" id="jsonFile" accept=".json" onchange="handleJsonImport(event)">
+        <div style="font-size:32px;margin-bottom:8px">📂</div>
+        <div style="font-weight:600;margin-bottom:4px">點擊或拖曳 JSON 備份檔</div>
+        <div style="font-size:12px;color:var(--text3)">支援本系統匯出的備份格式</div>
+      </div>
+  
+      <div style="margin-top:16px;padding-top:16px;border-top:0.5px solid var(--border)">
+        <div class="card-title" style="margin-bottom:8px">直接匯入原始手術資料（XLS）</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:12px">支援 11401-12.xls 格式，自動計算月別、科別、逾時率等所有指標</div>
+        <div class="upload-zone" onclick="document.getElementById('xlsFile').click()" id="xlsZone">
+          <input type="file" id="xlsFile" accept=".xls,.xlsx" onchange="handleXlsImport(event)">
+          <div style="font-size:28px;margin-bottom:6px">📊</div>
+          <div style="font-weight:600;margin-bottom:4px">點擊上傳原始 XLS 手術資料</div>
+          <div style="font-size:12px;color:var(--text3)">自動解析全年手術量、科別、逾時、班別</div>
+        </div>
+        <div id="xls-progress" style="margin-top:10px;display:none">
+          <div style="height:4px;background:var(--bg);border-radius:2px;overflow:hidden">
+            <div id="xls-bar" style="height:100%;background:var(--blue-m);width:0%;transition:width .4s;border-radius:2px"></div>
+          </div>
+          <div id="xls-status" style="font-size:12px;color:var(--text2);margin-top:6px"></div>
+        </div>
+      </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:0.5px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div class="card-title">Google Drive 雲端同步</div>
+          <span id="drive-auth-badge" style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--text3)">未連線</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:12px">連線後所有裝置共用同一份資料，自動雲端備份</div>
+        <div id="drive-setup" style="display:none;margin-bottom:12px">
+          <div class="form-group">
+            <label class="form-label">Google API Client ID（需先設定）</label>
+            <input class="form-input" id="gapi-client-id" placeholder="xxxxx.apps.googleusercontent.com" style="font-size:11px">
+          </div>
+          <button class="btn btn-sm btn-success" onclick="saveClientId()">儲存設定</button>
+          <button class="btn btn-sm" onclick="document.getElementById('drive-setup').style.display='none'">取消</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" id="drive-connect-btn" onclick="driveConnect()">連線 Google Drive</button>
+          <button class="btn btn-sm" onclick="document.getElementById('drive-setup').style.display='block'">⚙ API 設定</button>
+          <button class="btn btn-sm btn-success" id="drive-upload-btn" onclick="driveUpload()" style="display:none">上傳同步</button>
+          <button class="btn btn-sm" id="drive-download-btn" onclick="driveDownload()" style="display:none">下載同步</button>
+        </div>
+        <div id="drive-file-info" style="font-size:11px;color:var(--text2);margin-top:8px"></div>
+      </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:0.5px solid var(--border)">
+        <div class="card-title" style="margin-bottom:8px">多人協作同步說明</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8">
+          <div style="margin-bottom:6px"><span style="color:var(--blue-m);font-weight:600">步驟一</span>　每人各自修改資料</div>
+          <div style="margin-bottom:6px"><span style="color:var(--blue-m);font-weight:600">步驟二</span>　點「匯出備份」下載 JSON（檔名含日期時間）</div>
+          <div style="margin-bottom:6px"><span style="color:var(--blue-m);font-weight:600">步驟三</span>　傳給負責人，由負責人匯入合併（系統自動保留最新版本）</div>
+          <div><span style="color:var(--blue-m);font-weight:600">步驟四</span>　負責人再匯出一份「主版本」傳給所有人匯入</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:0.5px solid var(--border)">
+        <div class="card-title" style="margin-bottom:12px">手動新增年度 KPI</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">年度（民國年）</label>
+            <input class="form-input" type="number" id="imp-year" placeholder="例如 115">
+          </div>
+          <div class="form-group">
+            <label class="form-label">手術總件數</label>
+            <input class="form-input" type="number" id="imp-total">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">平均手術時間（分）</label>
+            <input class="form-input" type="number" step="0.1" id="imp-avgtime">
+          </div>
+          <div class="form-group">
+            <label class="form-label">逾時率（%）</label>
+            <input class="form-input" type="number" step="0.1" id="imp-otrate">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">8AM 準時率（%）</label>
+            <input class="form-input" type="number" step="0.1" id="imp-ontime">
+          </div>
+          <div class="form-group">
+            <label class="form-label">達文西件數</label>
+            <input class="form-input" type="number" id="imp-dv">
+          </div>
+        </div>
+        <div style="margin-top:4px">
+          <label class="form-label">月別件數（1-12月，逗號分隔）</label>
+          <input class="form-input" type="text" id="imp-monthly" placeholder="1000,1100,1200,1150,...">
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="importManual()">新增年度</button>
+          <button class="btn" onclick="clearImportForm()">清除</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /page -->
+</div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ══ MODAL：年度切換 ══ -->
+<div class="modal-overlay" id="yearModal" onclick="if(event.target===this)closeModal('yearModal')">
+  <div class="modal">
+    <div class="modal-title">切換年度<span class="modal-close" onclick="closeModal('yearModal')">×</span></div>
+    <div id="yearList"></div>
+    <div style="margin-top:16px">
+      <button class="btn btn-sm btn-success" onclick="goPage('import',null);closeModal('yearModal')">＋ 新增年度</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL：編輯科別 ══ -->
+<div class="modal-overlay" id="editDeptModal" onclick="if(event.target===this)closeModal('editDeptModal')">
+  <div class="modal">
+    <div class="modal-title"><span id="editDeptTitle">編輯科別</span><span class="modal-close" onclick="closeModal('editDeptModal')">×</span></div>
+    <div id="editDeptForm"></div>
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="saveDeptEdit()">儲存</button>
+      <button class="btn" onclick="closeModal('editDeptModal')">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════
+// DATA STORE
+// ════════════════════════════════════════════════════
+const BASE_114 = {
+  year:114,label:"114年",
+  kpi:{total:15461,avg_daily:42.4,ot_count:458,ot_rate:3.0,avg_time:85.9,emerg:2850,urgent:164,crit:32,ontime_rate:70.0,turnover_avg:32.4,dv_count:104},
+  monthly:[1053,1161,1358,1267,1362,1292,1417,1364,1272,1326,1189,1400],
+  types:{門診手術:6768,住院手術:5651,急診手術:2846,緊急手術:164,危急手術:32},
+  shift:{白班:13404,小夜:1712,大夜:345},
+  dept:[
+    {name:"泌尿科",count:3087,avg_time:72.7,ot_rate:2.3,ot_count:72},
+    {name:"眼科",count:3005,avg_time:26.8,ot_rate:0.2,ot_count:7},
+    {name:"骨科",count:2794,avg_time:131.5,ot_rate:7.0,ot_count:195},
+    {name:"一般外科",count:1409,avg_time:92.8,ot_rate:2.3,ot_count:32},
+    {name:"心臟血管外科",count:1037,avg_time:78.6,ot_rate:2.8,ot_count:29},
+    {name:"婦產科",count:893,avg_time:99.5,ot_rate:2.1,ot_count:19},
+    {name:"耳鼻喉科",count:814,avg_time:73.1,ot_rate:2.0,ot_count:16},
+    {name:"整型外科",count:721,avg_time:56.7,ot_rate:2.6,ot_count:19},
+    {name:"直腸外科",count:448,avg_time:114.6,ot_rate:1.6,ot_count:7},
+    {name:"乳房外科",count:440,avg_time:86.1,ot_rate:7.5,ot_count:33},
+    {name:"神經外科",count:402,avg_time:255.1,ot_rate:4.7,ot_count:19},
+    {name:"胸腔外科",count:270,avg_time:158.8,ot_rate:3.7,ot_count:10},
+    {name:"口腔外科(含牙醫部)",count:76,avg_time:195.6,ot_rate:0.0,ot_count:0},
+    {name:"小兒外科",count:64,avg_time:59.9,ot_rate:0.0,ot_count:0},
+    {name:"麻醉科",count:1,avg_time:79.0,ot_rate:0.0,ot_count:0}
+  ],
+  room_util:[
+    {room:"01",white:61.4,evening:15.2,night:51.9},
+    {room:"02",white:81.6,evening:38.8,night:26.2},
+    {room:"03",white:89.0,evening:43.0,night:62.9},
+    {room:"05",white:81.9,evening:29.1,night:44.2},
+    {room:"06",white:80.2,evening:46.3,night:32.7},
+    {room:"07",white:82.6,evening:35.8,night:20.4},
+    {room:"08",white:75.9,evening:10.7,night:19.3},
+    {room:"09",white:83.6,evening:38.6,night:30.7},
+    {room:"11",white:88.0,evening:36.9,night:78.7},
+    {room:"12",white:55.4,evening:10.4,night:5.8},
+    {room:"13",white:44.9,evening:5.4,night:19.8},
+    {room:"8A",white:17.5,evening:0.0,night:0.0}
+  ],
+  ontime:{overall:70.0,monthly:[67.8,66.5,70.9,71.6,70.3,69.7,68.7,77.3,69.4,70.9,71.6,69.2],
+    by_room:[{room:"OR11",rate:91.1},{room:"OR08",rate:90.5},{room:"OR02",rate:85.3},{room:"OR09",rate:84.1},{room:"OR07",rate:83.6},{room:"OR05",rate:83.0},{room:"OR13",rate:73.9},{room:"OR12",rate:71.4},{room:"OR06",rate:71.1},{room:"OR03",rate:63.0},{room:"DR",rate:34.4},{room:"8A",rate:26.9},{room:"OR01",rate:12.0}]},
+  emergency:{
+    emerg_monthly:[218,223,244,212,237,206,249,263,247,268,222,261],
+    urgent_monthly:[11,13,15,11,16,18,24,8,8,16,8,15],
+    crit_monthly:[2,1,3,1,3,1,4,2,3,2,3,4],
+    emerg_dept:[{name:"骨科",count:1235},{name:"泌尿科",count:377},{name:"心臟血管外科",count:328},{name:"一般外科",count:294},{name:"整型外科",count:285},{name:"胸腔外科",count:100}],
+    urgent_achv_rate:93.5,urgent_achv:144,urgent_total:154,
+    crit_achv_rate:96.6,crit_achv:28,crit_total:29
+  },
+  davinci:{total:104,avg_time:317.0,monthly:[5,12,11,8,11,12,9,7,6,10,5,8],dept:{泌尿科:63,婦產科:34,直腸外科:5,一般外科:2},quarterly:{Q1:28,Q2:31,Q3:22,Q4:23},ontime_rate:94.3},
+  cvs:{total:1037,cabg:14,cabg_avg:493.1,ecmo:8,ecmo_avg:77.4,valve:9,valve_avg:510.7,
+    cabg_monthly:[1,2,1,2,2,1,1,2,0,0,1,1],ecmo_monthly:[0,0,1,1,1,2,1,0,1,1,0,0],valve_monthly:[0,0,2,0,0,1,1,0,0,3,0,2]}
+};
+
+// State
+let DB = {};        // { year: data }
+let currentYear = 114;
+let chartInstances = {};
+let editingDept = null;
+let editingYear = null;
+
+const COLORS = {
+  blue:'#3b82f6',teal:'#10b981',amber:'#f59e0b',
+  red:'#ef4444',purple:'#8b5cf6',green:'#22c55e',gray:'#9ca3af',coral:'#f97316'
+};
+const PALETTE = Object.values(COLORS);
+const MN = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+const isDark = matchMedia('(prefers-color-scheme:dark)').matches;
+const GC = isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)';
+const TC = isDark?'#6b6a65':'#9b9a95';
+
+// ── STORAGE ──
+function saveDB(){ localStorage.setItem('or_db_v1', JSON.stringify(DB)); }
+function loadDB(){
+  try{ const s=localStorage.getItem('or_db_v1'); if(s) DB=JSON.parse(s); }catch(e){}
+  if(!DB[114]) DB[114]=JSON.parse(JSON.stringify(BASE_114));
+  saveDB();
+}
+
+function getYear(y){ return DB[y] || null; }
+function getYears(){ return Object.keys(DB).map(Number).sort((a,b)=>a-b); }
+function setYear(y,data){ DB[y]=data; saveDB(); }
+function deleteYear(y){ if(y===114){toast('114年為預設年度，無法刪除','error');return;} delete DB[y]; if(currentYear===y){currentYear=Math.max(...getYears());} saveDB(); refreshAll(); }
+
+// ── INIT ──
+function init(){
+  loadDB();
+  refreshAll();
+  initPWA();
+  // drag-drop upload
+  const uz=document.getElementById('uploadZone');
+  uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('dragover')});
+  uz.addEventListener('dragleave',()=>uz.classList.remove('dragover'));
+  uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('dragover');if(e.dataTransfer.files[0]) processJsonFile(e.dataTransfer.files[0]);});
+}
+
+function refreshAll(){
+  updateYearSelectors();
+  updateSidebarBadge();
+  renderCurrentPage();
+}
+
+function updateYearSelectors(){
+  const years=getYears();
+  const selects=['cmpYearA','cmpYearB','cmpYearC','editYear'];
+  selects.forEach(id=>{
+    const sel=document.getElementById(id);
+    if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML=years.map(y=>`<option value="${y}">${y}年</option>`).join('');
+    if(id==='cmpYearA'){ sel.value=years.includes(Number(cur))?cur:years[years.length-1]; }
+    else if(id==='cmpYearB'){ sel.value=years.includes(Number(cur))?cur:(years.length>1?years[years.length-2]:years[0]); }
+    else if(id==='cmpYearC'){
+      const opt=document.createElement('option'); opt.value=''; opt.textContent='（不選）';
+      sel.insertBefore(opt,sel.firstChild);
+      sel.value=years.includes(Number(cur))?cur:'';
+    }
+    else { sel.value=years.includes(Number(cur))?cur:currentYear; }
+  });
+}
+
+function updateSidebarBadge(){
+  document.getElementById('badgeYear').textContent=currentYear+'年';
+  document.getElementById('topYearLabel').textContent=currentYear+'年資料';
+}
+
+// ── NAVIGATION ──
+let currentPage = 'overview';
+function goPage(page, el){
+  document.querySelectorAll('.page-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if(el) el.classList.add('active');
+  else { document.querySelectorAll('.nav-item').forEach(n=>{if(n.onclick&&n.onclick.toString().includes("'"+page+"'"))n.classList.add('active');}); }
+  const titles={overview:'業務量總覽',dept:'科別分析',time:'時間分析',room:'房間使用率',emerg:'急診業務量',davinci:'達文西手術',cvs:'心臟外科',compare:'年度比較',edit:'資料編輯',import:'匯入資料'};
+  document.getElementById('pageTitle').textContent=titles[page]||page;
+  currentPage=page;
+  renderCurrentPage();
+  closeSidebar();
+}
+
+function renderCurrentPage(){
+  destroyCharts();
+  const d=getYear(currentYear);
+  if(!d) return;
+  const pg=currentPage;
+  if(pg==='overview') renderOverview(d);
+  else if(pg==='dept') renderDept(d);
+  else if(pg==='time') renderTime(d);
+  else if(pg==='room') renderRoom(d);
+  else if(pg==='emerg') renderEmerg(d);
+  else if(pg==='davinci') renderDavinci(d);
+  else if(pg==='cvs') renderCvs(d);
+  else if(pg==='compare') renderCompare();
+  else if(pg==='edit') renderEdit();
+}
+
+// ── CHART HELPER ──
+function destroyCharts(){
+  Object.values(chartInstances).forEach(c=>{try{c.destroy();}catch(e){}});
+  chartInstances={};
+}
+function mkChart(id,type,data,opts){
+  const el=document.getElementById(id); if(!el)return null;
+  const c=new Chart(el,{type,data,options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:GC},ticks:{color:TC}},y:{grid:{color:GC},ticks:{color:TC}}},...opts}});
+  chartInstances[id]=c; return c;
+}
+function baseOpts(extra={}){
+  return {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:GC},ticks:{color:TC}},y:{grid:{color:GC},ticks:{color:TC}}},...extra};
+}
+
+// ── KPI CARD HELPER ──
+function kpiCard(label,value,sub,color='var(--text)',diff=null){
+  const diffHtml=diff!=null?`<div class="kpi-diff ${diff>0?'diff-up':diff<0?'diff-dn':'diff-eq'}">${diff>0?'▲':diff<0?'▼':'—'} ${Math.abs(diff).toFixed(1)}${typeof diff==='number'&&diff!==0?'%':''}</div>`:'';
+  return `<div class="kpi"><div class="kpi-label">${label}</div><div class="kpi-value" style="color:${color}">${value}</div><div class="kpi-sub">${sub}</div>${diffHtml}</div>`;
+}
+
+// ════════════════════════════════════════════════
+// OVERVIEW
+// ════════════════════════════════════════════════
+function renderOverview(d){
+  const k=d.kpi;
+  document.getElementById('kpi-overview').innerHTML=[
+    kpiCard('年度手術總量',k.total.toLocaleString(),'件',COLORS.blue),
+    kpiCard('平均每日件數',k.avg_daily,'件/日',COLORS.teal),
+    kpiCard('平均手術時間',k.avg_time+' 分','',COLORS.amber),
+    kpiCard('逾時率',k.ot_rate+'%',k.ot_count+'件逾時',COLORS.red),
+    kpiCard('8AM準時率',k.ontime_rate+'%','首台準時',COLORS.purple),
+    kpiCard('達文西手術',k.dv_count,'件',COLORS.green),
+  ].join('');
+
+  mkChart('c-monthly-ov','bar',{
+    labels:MN,
+    datasets:[{data:d.monthly,backgroundColor:d.monthly.map((v,i)=>i<3?'#93c5fd':i<6?COLORS.teal:i<9?COLORS.amber:COLORS.coral),borderRadius:4,borderSkipped:false}]
+  },{...baseOpts(),scales:{x:{...baseOpts().scales.x,ticks:{...baseOpts().scales.x.ticks,autoSkip:false,maxRotation:0}},y:{...baseOpts().scales.y,min:Math.min(...d.monthly)*0.9}}});
+
+  const typeKeys=Object.keys(d.types);
+  const typeVals=Object.values(d.types);
+  const total=typeVals.reduce((a,b)=>a+b,0);
+  mkChart('c-types-ov','doughnut',{
+    labels:typeKeys,
+    datasets:[{data:typeVals,backgroundColor:PALETTE.slice(0,typeKeys.length),borderWidth:2,borderColor:isDark?'#1c1c1f':'#fff'}]
+  },{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:true,position:'right',labels:{color:TC,font:{size:11},boxWidth:10,padding:8}}}});
+
+  const shiftKeys=Object.keys(d.shift); const shiftVals=Object.values(d.shift);
+  mkChart('c-shift-ov','doughnut',{
+    labels:shiftKeys,
+    datasets:[{data:shiftVals,backgroundColor:[COLORS.blue,COLORS.teal,COLORS.amber],borderWidth:2,borderColor:isDark?'#1c1c1f':'#fff'}]
+  },{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{display:true,position:'right',labels:{color:TC,font:{size:11},boxWidth:10}}}});
+
+  const top8=d.dept.slice(0,8);
+  mkChart('c-dept-ov','bar',{
+    labels:top8.map(x=>x.name),
+    datasets:[{data:top8.map(x=>x.count),backgroundColor:COLORS.blue,borderRadius:3,borderSkipped:false}]
+  },{...baseOpts(),indexAxis:'y',scales:{x:{...baseOpts().scales.x,beginAtZero:true},y:{...baseOpts().scales.y,ticks:{color:TC,font:{size:11}}}}});
+}
+
+// ════════════════════════════════════════════════
+// DEPT
+// ════════════════════════════════════════════════
+function renderDept(d){
+  const total=d.kpi.total;
+  const tbody=document.getElementById('dept-table-body');
+  tbody.innerHTML=d.dept.map(dep=>{
+    const pill=dep.ot_rate>=5?'pill-red':dep.ot_rate>=2?'pill-amber':'pill-green';
+    return `<tr>
+      <td style="font-weight:600">${dep.name}</td>
+      <td>${dep.count.toLocaleString()}</td>
+      <td>${(dep.count/total*100).toFixed(1)}%</td>
+      <td>${dep.avg_time}</td>
+      <td><span class="pill ${pill}">${dep.ot_rate}%</span></td>
+      <td>${dep.ot_count}</td>
+    </tr>`;
+  }).join('');
+
+  const depts=d.dept.filter(x=>x.ot_count>0).sort((a,b)=>b.ot_count-a.ot_count);
+  const hw1=document.getElementById('c-dept-ot').parentElement;
+  hw1.style.height=Math.max(220,depts.length*32+60)+'px';
+  mkChart('c-dept-ot','bar',{
+    labels:depts.map(x=>x.name),
+    datasets:[{data:depts.map(x=>x.ot_rate),backgroundColor:depts.map(x=>x.ot_rate>=5?COLORS.red:x.ot_rate>=2?COLORS.amber:COLORS.teal),borderRadius:3,borderSkipped:false}]
+  },{...baseOpts(),indexAxis:'y',scales:{x:{...baseOpts().scales.x,ticks:{...baseOpts().scales.x.ticks,callback:v=>v+'%'}},y:{...baseOpts().scales.y,ticks:{color:TC,font:{size:11}}}}});
+
+  const byTime=d.dept.filter(x=>x.count>=30).sort((a,b)=>b.avg_time-a.avg_time).slice(0,12);
+  const hw2=document.getElementById('c-dept-time').parentElement;
+  hw2.style.height=Math.max(220,byTime.length*32+60)+'px';
+  mkChart('c-dept-time','bar',{
+    labels:byTime.map(x=>x.name),
+    datasets:[{data:byTime.map(x=>x.avg_time),backgroundColor:byTime.map(x=>x.avg_time>=200?COLORS.red:x.avg_time>=100?COLORS.amber:COLORS.blue),borderRadius:3,borderSkipped:false}]
+  },{...baseOpts(),indexAxis:'y',scales:{x:{...baseOpts().scales.x,ticks:{...baseOpts().scales.x.ticks,callback:v=>v+' 分'}},y:{...baseOpts().scales.y,ticks:{color:TC,font:{size:11}}}}});
+}
+
+// ════════════════════════════════════════════════
+// TIME
+// ════════════════════════════════════════════════
+function renderTime(d){
+  const ot=d.ontime;
+  document.getElementById('kpi-ontime').innerHTML=`<div class="kpi-label">整體8AM準時率</div><div class="kpi-value" style="color:${COLORS.purple}">${ot.overall}%</div><div class="kpi-sub">首台進手術室 07:25-08:10</div>`;
+  document.getElementById('kpi-turnover').innerHTML=`<div class="kpi-label">平均銜接時間</div><div class="kpi-value" style="color:${COLORS.teal}">${d.kpi.turnover_avg} 分</div><div class="kpi-sub">同一房間同科同天</div>`;
+  document.getElementById('kpi-slot-peak').innerHTML=`<div class="kpi-label">月最高準時率</div><div class="kpi-value" style="color:${COLORS.green}">${Math.max(...ot.monthly).toFixed(1)}%</div><div class="kpi-sub">${MN[ot.monthly.indexOf(Math.max(...ot.monthly))]}</div>`;
+  const bestRoom=ot.by_room[0];
+  document.getElementById('kpi-room-best').innerHTML=`<div class="kpi-label">準時率最佳房間</div><div class="kpi-value" style="color:${COLORS.amber}">${bestRoom.room}</div><div class="kpi-sub">${bestRoom.rate}%</div>`;
+
+  mkChart('c-ontime-mon','line',{
+    labels:MN,
+    datasets:[{data:ot.monthly,borderColor:COLORS.purple,backgroundColor:'rgba(139,92,246,0.08)',fill:true,tension:0.35,pointBackgroundColor:COLORS.purple,pointRadius:4}]
+  },{...baseOpts(),scales:{x:{...baseOpts().scales.x,ticks:{...baseOpts().scales.x.ticks,autoSkip:false,maxRotation:0}},y:{...baseOpts().scales.y,min:Math.min(...ot.monthly)-5,max:100,ticks:{...baseOpts().scales.y.ticks,callback:v=>v+'%'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.raw.toFixed(1)+'%'}}}});
+
+  const rooms=ot.by_room.filter(r=>r.rate>0);
+  const rw=document.getElementById('c-ontime-room').parentElement;
+  rw.style.height=Math.max(180,rooms.length*28+60)+'px';
+  mkChart('c-ontime-room','bar',{
+    labels:rooms.map(r=>r.room),
+    datasets:[{data:rooms.map(r=>r.rate),backgroundColor:rooms.map(r=>r.rate>=85?COLORS.green:r.rate>=70?COLORS.teal:r.rate>=50?COLORS.amber:COLORS.red),borderRadius:3,borderSkipped:false}]
+  },{...baseOpts(),indexAxis:'y',scales:{x:{...baseOpts().scales.x,min:0,max:100,ticks:{...baseOpts().scales.x.ticks,callback:v=>v+'%'}},y:{...baseOpts().scales.y,ticks:{color:TC,font:{size:11}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.raw.toFixed(1)+'%'}}}});
+}
+
+// ════════════════════════════════════════════════
+// ROOM
+// ════════════════════════════════════════════════
+function renderRoom(d){
+  const rooms=d.room_util.sort((a,b)=>b.white-a.white);
+  const hw=document.getElementById('c-room-chart').parentElement;
+  hw.style.height=Math.max(220,rooms.length*38+80)+'px';
+  mkChart('c-room-chart','bar',{
+    labels:rooms.map(r=>'OR'+r.room),
+    datasets:[
+      {label:'白班',data:rooms.map(r=>r.white),backgroundColor:COLORS.blue,borderRadius:2},
+      {label:'小夜',data:rooms.map(r=>r.evening),backgroundColor:COLORS.teal,borderRadius:2},
+      {label:'大夜',data:rooms.map(r=>r.night),backgroundColor:COLORS.amber,borderRadius:2},
+    ]
+  },{...baseOpts(),indexAxis:'y',plugins:{legend:{display:true,position:'top',labels:{color:TC,font:{size:11},boxWidth:10}}},scales:{x:{...baseOpts().scales.x,min:0,max:110,stacked:false,ticks:{...baseOpts().scales.x.ticks,callback:v=>v+'%'}},y:{...baseOpts().scales.y,ticks:{color:TC,font:{size:11}}}}});
+
+  const tbody=document.getElementById('room-tbody');
+  tbody.innerHTML=rooms.map(r=>{
+    const all=((r.white+r.evening+r.night)/3).toFixed(1);
+    const cl=v=>v>=80?'color:var(--green)':v>=60?'color:var(--blue)':v<20?'color:var(--text3)':'';
+    return `<tr><td style="font-weight:600">OR${r.room}</td><td style="${cl(r.white)}">${r.white}%</td><td style="${cl(r.evening)}">${r.evening}%</td><td style="${cl(r.night)}">${r.night}%</td><td style="font-weight:600">${all}%</td></tr>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════
+// EMERG
+// ════════════════════════════════════════════════
+function renderEmerg(d){
+  const e=d.emergency;
+  document.getElementById('kpi-emerg').innerHTML=[
+    kpiCard('急診手術',d.kpi.emerg.toLocaleString(),'件',COLORS.blue),
+    kpiCard('緊急手術',d.kpi.urgent.toLocaleString(),'件',COLORS.amber),
+    kpiCard('危急手術',d.kpi.crit.toLocaleString(),'件',COLORS.red),
+    kpiCard('緊急≤120分達成',e.urgent_achv_rate+'%',`${e.urgent_achv}/${e.urgent_total}`,e.urgent_achv_rate>=95?COLORS.green:COLORS.amber),
+    kpiCard('危急≤30分達成',e.crit_achv_rate+'%',`${e.crit_achv}/${e.crit_total}`,e.crit_achv_rate>=95?COLORS.green:COLORS.amber),
+  ].join('');
+
+  mkChart('c-emerg-mon','line',{
+    labels:MN,
+    datasets:[
+      {label:'急診',data:e.emerg_monthly,borderColor:COLORS.blue,backgroundColor:'rgba(59,130,246,0.07)',fill:true,tension:0.3,pointRadius:3},
+      {label:'緊急',data:e.urgent_monthly,borderColor:COLORS.amber,tension:0.3,pointRadius:3,pointBackgroundColor:COLORS.amber},
+      {label:'危急',data:e.crit_monthly,borderColor:COLORS.red,tension:0.3,pointRadius:3,pointBackgroundColor:COLORS.red},
+    ]
+  },{...baseOpts(),scales:{x:{...baseOpts().scales.x,ticks:{...baseOpts().scales.x.ticks,autoSkip:false,maxRotation:0}},y:{...baseOpts().scales.y,beginAtZero:true}},plugins:{legend:{display:true,position:'top',labels:{color:TC,font:{size:11},boxWidth:10}}}});
+
+  const pct_u=e.urgent_achv_rate; const pct_c=e.crit_achv_rate;
+  document.getElementById('achv-detail').innerHTML=`
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;font-weight:600">緊急手術（目標≤120分）</span><span class="pill ${pct_u>=95?'pill-green':'pill-amber'}">${pct_u}%</span></div>
+      <div style="background:var(--bg);border-radius:6px;height:10px;overflow:hidden"><div style="width:${pct_u}%;height:100%;background:${pct_u>=95?COLORS.green:COLORS.amber};border-radius:6px;transition:width .5s"></div></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">${e.urgent_achv} / ${e.urgent_total} 件達標</div>
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;font-weight:600">危急手術（目標≤30分）</span><span class="pill ${pct_c>=95?'pill-green':'pill-amber'}">${pct_c}%</span></div>
+      <div style="background:var(--bg);border-radius:6px;height:10px;overflow:hidden"><div style="width:${pct_c}%;height:100%;background:${pct_c>=95?COLORS.green:COLORS.amber};border-radius:6px;transition:width .5s"></div></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">${e.crit_achv} / ${e.crit_total} 件達標</div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════
+// DAVINCI
+// ════════════════════════════════════════════════
+function renderDavinci(d){
+  const dv=d.davinci;
+  document.getElementById('kpi-dv').innerHTML=[
+    kpiCard('年度總量',dv.total,'件',COLORS.blue),
+    kpiCard('平均手術時間',dv.avg_time+' 分','',COLORS.amber),
+    kpiCard('8AM準時率',dv.ontime_rate+'%','首台準時',COLORS.green),
+    kpiCard('最多月份',`${Math.max(...dv.monthly)}件`,MN[dv.monthly.indexOf(Math.max(...dv.monthly))],COLORS.purple),
+  ].join('');
+
+  mkChart('c-dv-mon','bar',{
+    labels:MN,
+    datasets:[{data:dv.monthly,backgroundColor:dv.monthly.map(v=>v>=12?COLORS.blue:v>=8?COLORS.teal:COLORS.amber),borderRadius:4,borderSkipped:false}]
+  },{...baseOpts(),scales:{x:{...baseOpts().scales.x,ticks:{...baseOpts().scales.x.ticks,autoSkip:false,maxRotation:0}},y:{...baseOpts().scales.y,beginAtZero:true}}});
+
+  const deptKeys=Object.keys(dv.dept); const deptVals=Object.values(dv.dept);
+  mkChart('c-dv-dept','doughnut',{
+    labels:deptKeys,
+    datasets:[{data:deptVals,backgroundColor:PALETTE.slice(0,deptKeys.length),borderWidth:2,borderColor:isDark?'#1c1c1f':'#fff'}]
+  },{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{display:true,position:'right',labels:{color:TC,font:{size:11},boxWidth:10}}}});
+}
+
+// ════════════════════════════════════════════════
+// CVS
+// ════════════════════════════════════════════════
+function renderCvs(d){
+  const c=d.cvs;
+  document.getElementById('kpi-cvs').innerHTML=[
+    kpiCard('心臟外科總量',c.total.toLocaleString(),'件',COLORS.red),
+    kpiCard('CABG冠狀動脈繞道',c.cabg+'件',`平均${c.cabg_avg}分`,COLORS.red),
+    kpiCard('ECMO體外維生',c.ecmo+'件',`平均${c.ecmo_avg}分`,COLORS.amber),
+    kpiCard('Valve瓣膜手術',c.valve+'件',`平均${c.valve_avg}分`,COLORS.teal),
+  ].join('');
+
+  mkChart('c-cvs-mon','line',{
+    labels:MN,
+    datasets:[
+      {label:'CABG',data:c.cabg_monthly,borderColor:COLORS.red,tension:0.2,pointRadius:4,pointBackgroundColor:COLORS.red,borderWidth:2},
+      {label:'ECMO',data:c.ecmo_monthly,borderColor:COLORS.amber,tension:0.2,pointRadius:4,pointBackgroundColor:COLORS.amber,borderWidth:2,borderDash:[4,3]},
+      {label:'Valve',data:c.valve_monthly,borderColor:COLORS.teal,tension:0.2,pointRadius:4,pointBackgroundColor:COLORS.teal,borderWidth:2,borderDash:[8,3]},
+    ]
+  },{...baseOpts(),scales:{x:{...baseOpts().scales.x,ticks:{...baseOpts().scales.x.ticks,autoSkip:false,maxRotation:0}},y:{...baseOpts().scales.y,beginAtZero:true,max:Math.max(...c.cabg_monthly,...c.ecmo_monthly,...c.valve_monthly)+1,ticks:{...baseOpts().scales.y.ticks,stepSize:1}}},plugins:{legend:{display:true,position:'top',labels:{color:TC,font:{size:11},boxWidth:10}}}});
+}
+
+// ════════════════════════════════════════════════
+// COMPARE
+// ════════════════════════════════════════════════
+function renderCompare(){
+  const ya=Number(document.getElementById('cmpYearA').value);
+  const yb=Number(document.getElementById('cmpYearB').value);
+  const ycEl=document.getElementById('cmpYearC');
+  const yc=ycEl&&ycEl.value?Number(ycEl.value):null;
+  const da=getYear(ya); const db=getYear(yb); const dc=yc?getYear(yc):null;
+  if(!da||!db){ document.getElementById('compare-content').innerHTML='<div class="card" style="text-align:center;color:var(--text3);padding:40px">請先新增比較的年度資料</div>'; return; }
+
+  const diff=(a,b,pct=false)=>{
+    const d=a-b; const sign=d>0?'+':'';
+    const val=pct?`${sign}${d.toFixed(1)}%`:`${sign}${Math.abs(d)>=1000?d.toLocaleString():d.toFixed(1)}`;
+    const cls=d>0?'diff-up':d<0?'diff-dn':'diff-eq';
+    return `<span class="diff-arrow ${cls}">${d>0?'▲':d<0?'▼':'—'}${val}</span>`;
+  };
+
+  const cmpKpi=[
+    {label:'手術總量',a:da.kpi.total.toLocaleString(),b:db.kpi.total.toLocaleString(),d:diff(da.kpi.total,db.kpi.total)},
+    {label:'平均時間(分)',a:da.kpi.avg_time,b:db.kpi.avg_time,d:diff(da.kpi.avg_time,db.kpi.avg_time)},
+    {label:'逾時率%',a:da.kpi.ot_rate+'%',b:db.kpi.ot_rate+'%',d:diff(da.kpi.ot_rate,db.kpi.ot_rate,true)},
+    {label:'8AM準時率%',a:da.kpi.ontime_rate+'%',b:db.kpi.ontime_rate+'%',d:diff(da.kpi.ontime_rate,db.kpi.ontime_rate,true)},
+    {label:'平均銜接時間(分)',a:da.kpi.turnover_avg,b:db.kpi.turnover_avg,d:diff(da.kpi.turnover_avg,db.kpi.turnover_avg)},
+    {label:'達文西件數',a:da.kpi.dv_count,b:db.kpi.dv_count,d:diff(da.kpi.dv_count,db.kpi.dv_count)},
+    {label:'緊急達成率%',a:da.emergency.urgent_achv_rate+'%',b:db.emergency.urgent_achv_rate+'%',d:diff(da.emergency.urgent_achv_rate,db.emergency.urgent_achv_rate,true)},
+    {label:'危急達成率%',a:da.emergency.crit_achv_rate+'%',b:db.emergency.crit_achv_rate+'%',d:diff(da.emergency.crit_achv_rate,db.emergency.crit_achv_rate,true)},
+  ];
+
+  document.getElementById('compare-content').innerHTML=`
+    <div class="card mb16">
+      <div class="card-header">
+        <span class="card-title">關鍵指標對比</span>
+        <div style="display:flex;gap:16px;font-size:12px">
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:${COLORS.blue};display:inline-block"></span>${ya}年</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:${COLORS.amber};display:inline-block"></span>${yb}年</span>
+        </div>
+      </div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>指標</th><th>${ya}年</th><th>${yb}年</th><th>變化</th></tr></thead>
+        <tbody>${cmpKpi.map(r=>`<tr><td style="font-weight:500">${r.label}</td><td style="color:${COLORS.blue};font-weight:600">${r.a}</td><td style="color:${COLORS.amber};font-weight:600">${r.b}</td><td>${r.d}</td></tr>`).join('')}</tbody>
+      </table></div>
+    </div>
+    <div class="card mb16">
+      <div class="card-header"><span class="card-title">月別手術量對比</span></div>
+      <div class="chart-wrap" style="height:240px"><canvas id="c-cmp-monthly" role="img" aria-label="年度月別比較">月別對比。</canvas></div>
+    </div>
+    <div class="grid-2 mb16">
+      <div class="card">
+        <div class="card-header"><span class="card-title">急診三類對比</span></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c-cmp-emerg" role="img" aria-label="急診對比">急診對比。</canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">科別業務量對比（TOP 8）</span></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c-cmp-dept" role="img" aria-label="科別對比">科別對比。</canvas></div>
+      </div>
+    </div>`;
+
+  setTimeout(()=>{
+    mkChart('c-cmp-monthly','line',{
+      labels:MN,
+      datasets:[
+        {label:ya+'年',data:da.monthly,borderColor:COLORS.blue,backgroundColor:'rgba(59,130,246,0.06)',fill:true,tension:0.3,pointRadius:3,pointBackgroundColor:COLORS.blue},
+        {label:yb+'年',data:db.monthly,borderColor:COLORS.amber,backgroundColor:'rgba(245,158,11,0.06)',fill:true,tension:0.3,pointRadius:3,pointBackgroundColor:COLORS.amber,borderDash:[5,3]},
+        ...(dc?[{label:yc+'年',data:dc.monthly,borderColor:COLORS.teal,backgroundColor:'rgba(16,185,129,0.05)',fill:false,tension:0.3,pointRadius:3,pointBackgroundColor:COLORS.teal,borderDash:[8,3]}]:[]),
+      ]
+    },{...baseOpts(),scales:{x:{...baseOpts().scales.x,ticks:{...baseOpts().scales.x.ticks,autoSkip:false,maxRotation:0}},y:{...baseOpts().scales.y,min:Math.min(...da.monthly,...db.monthly)*0.9}},plugins:{legend:{display:true,position:'top',labels:{color:TC,font:{size:11},boxWidth:10}}}});
+
+    const eTypes=['急診手術','緊急手術','危急手術'];
+    const eA=[da.kpi.emerg,da.kpi.urgent,da.kpi.crit];
+    const eB=[db.kpi.emerg,db.kpi.urgent,db.kpi.crit];
+    mkChart('c-cmp-emerg','bar',{
+      labels:eTypes,
+      datasets:[
+        {label:ya+'年',data:eA,backgroundColor:COLORS.blue,borderRadius:3},
+        {label:yb+'年',data:eB,backgroundColor:COLORS.amber,borderRadius:3},
+      ]
+    },{...baseOpts(),plugins:{legend:{display:true,position:'top',labels:{color:TC,font:{size:11},boxWidth:10}}},scales:{x:{...baseOpts().scales.x},y:{...baseOpts().scales.y,beginAtZero:true}}});
+
+    const top8=da.dept.slice(0,8);
+    const top8b=top8.map(d2=>{const f=db.dept.find(x=>x.name===d2.name);return f?f.count:0;});
+    mkChart('c-cmp-dept','bar',{
+      labels:top8.map(x=>x.name.length>5?x.name.substring(0,5)+'…':x.name),
+      datasets:[
+        {label:ya+'年',data:top8.map(x=>x.count),backgroundColor:COLORS.blue,borderRadius:3},
+        {label:yb+'年',data:top8b,backgroundColor:COLORS.amber,borderRadius:3},
+      ]
+    },{...baseOpts(),plugins:{legend:{display:true,position:'top',labels:{color:TC,font:{size:11},boxWidth:10}}},scales:{x:{...baseOpts().scales.x,ticks:{...baseOpts().scales.x.ticks,font:{size:10}}},y:{...baseOpts().scales.y,beginAtZero:true}}});
+  },50);
+}
+
+// ════════════════════════════════════════════════
+// EDIT
+// ════════════════════════════════════════════════
+function renderEdit(){
+  const yr=Number(document.getElementById('editYear').value)||currentYear;
+  editingYear=yr;
+  const d=getYear(yr);
+  if(!d){document.getElementById('edit-content').innerHTML='';return;}
+  const k=d.kpi;
+  document.getElementById('edit-content').innerHTML=`
+    <div class="card mb16">
+      <div class="card-header"><span class="card-title">📊 ${yr}年 KPI 指標</span><button class="btn btn-sm btn-primary" onclick="saveKpi(${yr})">儲存 KPI</button></div>
+      <div class="form-row">
+        ${editField('年度手術總量','ed-total',k.total,'number')}
+        ${editField('平均每日件數','ed-avgdaily',k.avg_daily,'number')}
+      </div>
+      <div class="form-row">
+        ${editField('平均手術時間(分)','ed-avgtime',k.avg_time,'number')}
+        ${editField('逾時率(%)','ed-otrate',k.ot_rate,'number')}
+      </div>
+      <div class="form-row">
+        ${editField('8AM準時率(%)','ed-ontime',k.ontime_rate,'number')}
+        ${editField('平均銜接時間(分)','ed-turnover',k.turnover_avg,'number')}
+      </div>
+      <div class="form-row">
+        ${editField('達文西件數','ed-dv',k.dv_count,'number')}
+        ${editField('急診件數','ed-emerg',k.emerg,'number')}
+      </div>
+    </div>
+    <div class="card mb16">
+      <div class="card-header"><span class="card-title">📅 月別手術量</span><button class="btn btn-sm btn-primary" onclick="saveMonthly(${yr})">儲存月別</button></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr>${MN.map(m=>`<th>${m}</th>`).join('')}</tr></thead>
+        <tbody><tr>${d.monthly.map((v,i)=>`<td><input type="number" id="mon-${i}" value="${v}"></td>`).join('')}</tr></tbody>
+      </table></div>
+    </div>
+    <div class="card mb16">
+      <div class="card-header"><span class="card-title">🔬 科別資料</span><button class="btn btn-sm btn-success" onclick="addDept(${yr})">＋ 新增科別</button></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>科別</th><th>件數</th><th>平均時間(分)</th><th>逾時率(%)</th><th>逾時件數</th><th>操作</th></tr></thead>
+        <tbody id="edit-dept-tbody"></tbody>
+      </table></div>
+    </div>
+    <div class="card mb16">
+      <div class="card-header"><span class="card-title">🚨 急診達成率</span><button class="btn btn-sm btn-primary" onclick="saveAchv(${yr})">儲存</button></div>
+      <div class="form-row">
+        ${editField('緊急達成件數','ed-u-achv',d.emergency.urgent_achv,'number')}
+        ${editField('緊急總件數','ed-u-total',d.emergency.urgent_total,'number')}
+      </div>
+      <div class="form-row">
+        ${editField('危急達成件數','ed-c-achv',d.emergency.crit_achv,'number')}
+        ${editField('危急總件數','ed-c-total',d.emergency.crit_total,'number')}
+      </div>
+    </div>
+    ${yr!==114?`<div style="margin-top:8px"><button class="btn btn-danger" onclick="if(confirm('確認刪除 ${yr}年資料？'))deleteYear(${yr})">🗑 刪除 ${yr}年資料</button></div>`:''}`;
+
+  renderEditDeptTable(yr,d);
+}
+
+function editField(label,id,val,type='text'){
+  return `<div class="form-group"><label class="form-label">${label}</label><input class="form-input" type="${type}" id="${id}" value="${val}" step="any"></div>`;
+}
+
+function renderEditDeptTable(yr,d){
+  const tbody=document.getElementById('edit-dept-tbody');
+  if(!tbody)return;
+  tbody.innerHTML=d.dept.map((dep,i)=>`<tr>
+    <td style="font-weight:500">${dep.name}</td>
+    <td>${dep.count.toLocaleString()}</td>
+    <td>${dep.avg_time}</td>
+    <td>${dep.ot_rate}%</td>
+    <td>${dep.ot_count}</td>
+    <td><button class="btn btn-sm" onclick="editDept(${yr},${i})">編輯</button></td>
+  </tr>`).join('');
+}
+
+function loadEditYear(){
+  const yr=Number(document.getElementById('editYear').value);
+  editingYear=yr;
+  currentYear=yr;
+  updateSidebarBadge();
+  renderEdit();
+}
+
+function saveKpi(yr){
+  const d=getYear(yr); if(!d)return;
+  d.kpi.total=Number(document.getElementById('ed-total').value);
+  d.kpi.avg_daily=Number(document.getElementById('ed-avgdaily').value);
+  d.kpi.avg_time=Number(document.getElementById('ed-avgtime').value);
+  d.kpi.ot_rate=Number(document.getElementById('ed-otrate').value);
+  d.kpi.ontime_rate=Number(document.getElementById('ed-ontime').value);
+  d.kpi.turnover_avg=Number(document.getElementById('ed-turnover').value);
+  d.kpi.dv_count=Number(document.getElementById('ed-dv').value);
+  d.kpi.emerg=Number(document.getElementById('ed-emerg').value);
+  d.label=yr+'年'; setYear(yr,d); toast('KPI 已儲存','success');
+}
+
+function saveMonthly(yr){
+  const d=getYear(yr); if(!d)return;
+  d.monthly=Array.from({length:12},(_,i)=>Number(document.getElementById('mon-'+i).value));
+  setYear(yr,d); toast('月別資料已儲存','success');
+}
+
+function saveAchv(yr){
+  const d=getYear(yr); if(!d)return;
+  const ua=Number(document.getElementById('ed-u-achv').value);
+  const ut=Number(document.getElementById('ed-u-total').value);
+  const ca=Number(document.getElementById('ed-c-achv').value);
+  const ct=Number(document.getElementById('ed-c-total').value);
+  d.emergency.urgent_achv=ua; d.emergency.urgent_total=ut;
+  d.emergency.urgent_achv_rate=ut>0?Math.round(ua/ut*1000)/10:0;
+  d.emergency.crit_achv=ca; d.emergency.crit_total=ct;
+  d.emergency.crit_achv_rate=ct>0?Math.round(ca/ct*1000)/10:0;
+  setYear(yr,d); toast('達成率已儲存','success');
+}
+
+function editDept(yr,idx){
+  const d=getYear(yr); if(!d)return;
+  const dep=d.dept[idx];
+  editingDept={yr,idx};
+  document.getElementById('editDeptTitle').textContent='編輯科別：'+dep.name;
+  document.getElementById('editDeptForm').innerHTML=`
+    <div class="form-group"><label class="form-label">科別名稱</label><input class="form-input" id="dep-name" value="${dep.name}"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">件數</label><input class="form-input" type="number" id="dep-count" value="${dep.count}"></div>
+      <div class="form-group"><label class="form-label">平均手術時間(分)</label><input class="form-input" type="number" step="0.1" id="dep-avgtime" value="${dep.avg_time}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">逾時率(%)</label><input class="form-input" type="number" step="0.1" id="dep-otrate" value="${dep.ot_rate}"></div>
+      <div class="form-group"><label class="form-label">逾時件數</label><input class="form-input" type="number" id="dep-otcount" value="${dep.ot_count}"></div>
+    </div>
+    <div style="margin-top:8px"><button class="btn btn-danger btn-sm" onclick="deleteDept()">刪除此科別</button></div>`;
+  openModal('editDeptModal');
+}
+
+function addDept(yr){
+  const d=getYear(yr); if(!d)return;
+  d.dept.push({name:'新科別',count:0,avg_time:0,ot_rate:0,ot_count:0});
+  editingDept={yr,idx:d.dept.length-1};
+  setYear(yr,d); renderEdit(); editDept(yr,d.dept.length-1);
+}
+
+function saveDeptEdit(){
+  const d=getYear(editingDept.yr); if(!d)return;
+  const dep=d.dept[editingDept.idx];
+  dep.name=document.getElementById('dep-name').value;
+  dep.count=Number(document.getElementById('dep-count').value);
+  dep.avg_time=Number(document.getElementById('dep-avgtime').value);
+  dep.ot_rate=Number(document.getElementById('dep-otrate').value);
+  dep.ot_count=Number(document.getElementById('dep-otcount').value);
+  setYear(editingDept.yr,d); closeModal('editDeptModal'); renderEdit(); toast('科別資料已儲存','success');
+}
+
+function deleteDept(){
+  if(!confirm('確認刪除此科別？'))return;
+  const d=getYear(editingDept.yr); if(!d)return;
+  d.dept.splice(editingDept.idx,1);
+  setYear(editingDept.yr,d); closeModal('editDeptModal'); renderEdit(); toast('科別已刪除');
+}
+
+function addNewYear(){
+  const y=prompt('請輸入年度（民國年，例如 115）');
+  if(!y||isNaN(Number(y)))return;
+  const yr=Number(y);
+  if(DB[yr]){toast(yr+'年資料已存在','error');return;}
+  const template=JSON.parse(JSON.stringify(BASE_114));
+  template.year=yr; template.label=yr+'年';
+  template.kpi={total:0,avg_daily:0,ot_count:0,ot_rate:0,avg_time:0,emerg:0,urgent:0,crit:0,ontime_rate:0,turnover_avg:0,dv_count:0};
+  template.monthly=Array(12).fill(0);
+  template.emergency={emerg_monthly:Array(12).fill(0),urgent_monthly:Array(12).fill(0),crit_monthly:Array(12).fill(0),emerg_dept:[],urgent_achv_rate:100,urgent_achv:0,urgent_total:0,crit_achv_rate:100,crit_achv:0,crit_total:0};
+  setYear(yr,template); refreshAll(); currentYear=yr; updateSidebarBadge();
+  document.getElementById('editYear').value=yr; renderEdit();
+  toast(yr+'年資料已建立，請填入資料','success');
+}
+
+// ════════════════════════════════════════════════
+// IMPORT / EXPORT
+// ════════════════════════════════════════════════
+function exportData(){
+  const meta={exportedAt:new Date().toISOString(),version:'2.0',years:getYears()};
+  const pkg={meta,...DB};
+  const blob=new Blob([JSON.stringify(pkg,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
+  a.download=`OR_備份_${ts}.json`;
+  a.click(); toast('備份已下載（含版本資訊）','success');
+}
+
+function handleJsonImport(evt){
+  const file=evt.target.files[0]; if(!file)return;
+  processJsonFile(file); evt.target.value='';
+}
+
+function processJsonFile(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const raw=JSON.parse(e.target.result);
+      const data=raw.meta?Object.fromEntries(Object.entries(raw).filter(([k])=>k!=='meta')):raw;
+      if(typeof data!=='object'){throw new Error('格式錯誤');}
+      let added=0,updated=0;
+      Object.keys(data).forEach(k=>{
+        const yr=Number(k);
+        if(!isNaN(yr)&&data[k]){
+          if(DB[yr]){updated++;}else{added++;}
+          DB[yr]=data[k];
+        }
+      });
+      saveDB(); refreshAll();
+      const msg=`匯入成功：新增 ${added} 年，更新 ${updated} 年${raw.meta?'（'+raw.meta.exportedAt?.slice(0,10)+'）':''}`;
+      toast(msg,'success');
+    }catch(err){ toast('匯入失敗：'+err.message,'error'); }
+  };
+  reader.readAsText(file);
+}
+
+function handleXlsImport(evt){
+  const file=evt.target.files[0]; if(!file)return;
+  evt.target.value='';
+  if(typeof XLSX==='undefined'){toast('XLS 解析庫載入中，請稍候重試','error');return;}
+  const prog=document.getElementById('xls-progress');
+  const bar=document.getElementById('xls-bar');
+  const status=document.getElementById('xls-status');
+  prog.style.display='block'; bar.style.width='20%'; status.textContent='讀取檔案…';
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      bar.style.width='50%'; status.textContent='解析工作表…';
+      const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+      bar.style.width='70%'; status.textContent='計算統計指標…';
+      const result=parseXlsRows(rows);
+      if(!result){throw new Error('無法識別欄位格式，請確認是手術病患一覽表');}
+      const yr=result.year;
+      const existing=DB[yr];
+      if(existing&&!confirm(`${yr}年資料已存在，確認覆蓋？`)){prog.style.display='none';return;}
+      DB[yr]=result.data; saveDB(); refreshAll();
+      bar.style.width='100%'; status.textContent=`✓ ${yr}年資料解析完成（${result.data.kpi.total.toLocaleString()}件）`;
+      setTimeout(()=>{prog.style.display='none';},3000);
+      toast(`${yr}年資料已匯入：${result.data.kpi.total.toLocaleString()}件手術`,'success');
+    }catch(err){
+      prog.style.display='none'; toast('XLS 解析失敗：'+err.message,'error');
+      console.error(err);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function parseXlsRows(rows){
+  if(!rows||rows.length<3)return null;
+  const header=rows[0];
+  const colMap={};
+  const needCols=['手術日期','科別名稱','手術別','午別','手術時間(分)','逾時否','進手術室時間'];
+  header.forEach((h,i)=>{if(h&&needCols.includes(String(h).trim()))colMap[String(h).trim()]=i;});
+  if(!colMap['手術日期']&&!colMap['科別名稱'])return null;
+
+  const c=(row,key)=>row[colMap[key]]??null;
+  const getRocMonth=v=>{const s=String(v||'').trim();return s.length>=5?parseInt(s.slice(3,5)):null;};
+  const getRocYear=v=>{const s=String(v||'').trim();return s.length>=3?parseInt(s.slice(0,3)):null;};
+
+  const dataRows=rows.slice(1).filter(r=>r&&r[colMap['手術日期']]);
+  if(!dataRows.length)return null;
+
+  const year=getRocYear(c(dataRows[0],'手術日期'))||114;
+  const total=dataRows.length;
+  const monthly=Array(12).fill(0);
+  const deptMap={};
+  const types={門診手術:0,住院手術:0,急診手術:0,緊急手術:0,危急手術:0};
+  const shift={白班:0,小夜:0,大夜:0};
+  let otCount=0; let timeSum=0; let timeCount=0;
+
+  dataRows.forEach(row=>{
+    const m=getRocMonth(c(row,'手術日期'));
+    if(m>=1&&m<=12)monthly[m-1]++;
+    const t=String(c(row,'手術別')||'').trim();
+    if(types.hasOwnProperty(t))types[t]++;
+    const ot=String(c(row,'逾時否')||'').trim();
+    if(ot==='Y')otCount++;
+    const tm=Number(c(row,'手術時間(分)'));
+    if(tm>0&&tm<600){timeSum+=tm;timeCount++;}
+    const dept=String(c(row,'科別名稱')||'').trim().replace('牙醫部','口腔外科(含牙醫部)').replace(/^口腔外科$/,'口腔外科(含牙醫部)');
+    if(dept){
+      if(!deptMap[dept])deptMap[dept]={count:0,timeSum:0,timeCount:0,ot:0};
+      deptMap[dept].count++;
+      if(tm>0&&tm<600){deptMap[dept].timeSum+=tm;deptMap[dept].timeCount++;}
+      if(ot==='Y')deptMap[dept].ot++;
+    }
+    const hr=colMap['進手術室時間']!=null?extractHour(c(row,'進手術室時間')):extractHourAlt(c(row,'午別'));
+    if(hr>=8&&hr<=15)shift['白班']++;
+    else if(hr>=16&&hr<=23)shift['小夜']++;
+    else if(hr>=0&&hr<8)shift['大夜']++;
+  });
+
+  const dept=Object.entries(deptMap).map(([name,d])=>({
+    name,count:d.count,
+    avg_time:d.timeCount>0?Math.round(d.timeSum/d.timeCount*10)/10:0,
+    ot_rate:d.count>0?Math.round(d.ot/d.count*1000)/10:0,
+    ot_count:d.ot
+  })).sort((a,b)=>b.count-a.count);
+
+  const data={
+    year,label:year+'年',
+    kpi:{total,avg_daily:Math.round(total/365*10)/10,ot_count:otCount,
+         ot_rate:Math.round(otCount/total*1000)/10,
+         avg_time:timeCount>0?Math.round(timeSum/timeCount*10)/10:0,
+         emerg:types['急診手術'],urgent:types['緊急手術'],crit:types['危急手術'],
+         ontime_rate:0,turnover_avg:0,dv_count:0},
+    monthly,types,shift,dept,
+    room_util:[],
+    ontime:{overall:0,monthly:Array(12).fill(0),by_room:[]},
+    emergency:{
+      emerg_monthly:Array(12).fill(0),urgent_monthly:Array(12).fill(0),crit_monthly:Array(12).fill(0),
+      emerg_dept:[],urgent_achv_rate:0,urgent_achv:0,urgent_total:0,
+      crit_achv_rate:0,crit_achv:0,crit_total:0
+    },
+    davinci:{total:0,avg_time:0,monthly:Array(12).fill(0),dept:{},quarterly:{Q1:0,Q2:0,Q3:0,Q4:0},ontime_rate:0},
+    cvs:{total:0,cabg:0,cabg_avg:0,ecmo:0,ecmo_avg:0,valve:0,valve_avg:0,
+         cabg_monthly:Array(12).fill(0),ecmo_monthly:Array(12).fill(0),valve_monthly:Array(12).fill(0)}
+  };
+  return {year,data};
+}
+
+function extractHour(v){
+  if(!v)return -1;
+  if(v instanceof Date)return v.getHours();
+  const s=String(v);
+  const m=s.match(/(\d{1,2}):(\d{2})/);
+  return m?parseInt(m[1]):-1;
+}
+function extractHourAlt(v){
+  const n=Number(v);
+  if(n===1)return 9;if(n===2)return 17;if(n===3)return 1;return -1;
+}
+
+function importManual(){
+  const yr=Number(document.getElementById('imp-year').value);
+  const total=Number(document.getElementById('imp-total').value);
+  if(!yr||!total){toast('請填入年度和總件數','error');return;}
+  const template=JSON.parse(JSON.stringify(BASE_114));
+  template.year=yr; template.label=yr+'年';
+  template.kpi.total=total;
+  template.kpi.avg_time=Number(document.getElementById('imp-avgtime').value)||0;
+  template.kpi.ot_rate=Number(document.getElementById('imp-otrate').value)||0;
+  template.kpi.ontime_rate=Number(document.getElementById('imp-ontime').value)||0;
+  template.kpi.dv_count=Number(document.getElementById('imp-dv').value)||0;
+  const monStr=document.getElementById('imp-monthly').value;
+  if(monStr){
+    const mons=monStr.split(',').map(Number);
+    if(mons.length===12) template.monthly=mons;
+  }
+  setYear(yr,template); refreshAll(); clearImportForm();
+  toast(yr+'年資料已新增，請至「資料編輯」補充詳細資料','success');
+}
+
+function clearImportForm(){
+  ['imp-year','imp-total','imp-avgtime','imp-otrate','imp-ontime','imp-dv','imp-monthly'].forEach(id=>{
+    document.getElementById(id).value='';
+  });
+}
+
+// ════════════════════════════════════════════════
+// MODAL
+// ════════════════════════════════════════════════
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+function openYearSwitcher(){
+  const years=getYears();
+  document.getElementById('yearList').innerHTML=years.map(y=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:0.5px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-weight:600">${y}年</div>
+        <div style="font-size:11px;color:var(--text3)">${getYear(y)?.kpi?.total?.toLocaleString()||0} 件</div>
+      </div>
+      <button class="btn btn-sm ${currentYear===y?'btn-primary':''}" onclick="switchYear(${y})">
+        ${currentYear===y?'✓ 目前':'切換'}
+      </button>
+    </div>`).join('');
+  openModal('yearModal');
+}
+
+function switchYear(yr){
+  currentYear=yr; updateSidebarBadge(); closeModal('yearModal');
+  renderCurrentPage(); toast(yr+'年資料已切換','success');
+}
+
+// ════════════════════════════════════════════════
+// SIDEBAR / TOAST
+// ════════════════════════════════════════════════
+function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('open'); }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('open'); }
+
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast '+(type||'');
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+
+// ── PWA ──────────────────────────────────────────────────
+let deferredPrompt = null;
+
+function initPWA() {
+  injectManifest();
+  injectServiceWorker();
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const b = document.getElementById('install-banner');
+    if (b) b.style.display = 'block';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    const b = document.getElementById('install-banner');
+    if (b) b.style.display = 'none';
+    toast('App 已安裝到主畫面！', 'success');
+  });
+
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone;
+  if (isIos && !isStandalone) {
+    const t = document.getElementById('ios-install-tip');
+    if (t) t.style.display = 'block';
+  }
+}
+
+function installPWA() {
+  if (!deferredPrompt) { toast('請使用 Chrome 或 Edge 瀏覽器安裝', 'error'); return; }
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(r => {
+    if (r.outcome === 'accepted') toast('安裝中…', 'success');
+    deferredPrompt = null;
+  });
+}
+
+function injectManifest() {
+  const icons = generateIcon();
+  const manifest = {
+    name: '手術室業務量管理系統',
+    short_name: '手術室管理',
+    description: '手術室業務量分析與年度比較',
+    start_url: './',
+    display: 'standalone',
+    background_color: '#f0eeea',
+    theme_color: '#1a56db',
+    lang: 'zh-TW',
+    icons: [
+      { src: icons[192], sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+      { src: icons[512], sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+    ],
+    categories: ['medical', 'productivity'],
+    shortcuts: [
+      { name: '業務量總覽', short_name: '總覽', url: './?page=overview', description: '查看年度業務量' },
+      { name: '年度比較', short_name: '比較', url: './?page=compare', description: '年度數據比較' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  document.getElementById('pwa-manifest').href = url;
+}
+
+function generateIcon() {
+  const sizes = [192, 512];
+  const urls = {};
+  sizes.forEach(sz => {
+    const c = document.createElement('canvas');
+    c.width = sz; c.height = sz;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#1a56db';
+    ctx.beginPath();
+    ctx.roundRect(0, 0, sz, sz, sz * 0.22);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${sz * 0.42}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('OR', sz / 2, sz / 2);
+    urls[sz] = c.toDataURL('image/png');
+  });
+  return urls;
+}
+
+function injectServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  const swCode = `
+const CACHE = 'or-mgmt-v1';
+const SHELL = ['./', './index.html'];
+
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      const fetchPromise = fetch(e.request).then(resp => {
+        if (resp && resp.status === 200) {
+          const clone = resp.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return resp;
+      }).catch(() => cached);
+      return cached || fetchPromise;
+    })
+  );
+});`;
+  const blob = new Blob([swCode], { type: 'application/javascript' });
+  const url = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url, { scope: './' })
+    .then(() => console.log('SW registered'))
+    .catch(err => console.warn('SW failed:', err));
+}
+// ── end PWA ──────────────────────────────────────────────
+
+
+// ══ Google Drive 同步 ══════════════════════════════════════════
+const DRIVE_SCOPES = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_FILE_NAME = 'OR_管理系統_同步資料.json';
+let gapiInited = false, gisInited = false, tokenClient = null, driveFileId = null;
+
+function gapiLoaded() {
+  gapi.load('client', () => {
+    gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'] })
+      .then(() => { gapiInited = true; checkDriveReady(); });
+  });
+}
+function gisLoaded() { gisInited = true; checkDriveReady(); }
+
+function checkDriveReady() {
+  if (!gapiInited || !gisInited) return;
+  const cid = localStorage.getItem('gapi_client_id');
+  if (!cid) return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: cid,
+    scope: DRIVE_SCOPES,
+    callback: onDriveToken,
+  });
+  const savedToken = sessionStorage.getItem('gapi_token');
+  if (savedToken) {
+    gapi.client.setToken(JSON.parse(savedToken));
+    setDriveConnected(true);
+  }
+}
+
+function saveClientId() {
+  const cid = document.getElementById('gapi-client-id').value.trim();
+  if (!cid) { toast('請填入 Client ID', 'error'); return; }
+  localStorage.setItem('gapi_client_id', cid);
+  document.getElementById('drive-setup').style.display = 'none';
+  checkDriveReady();
+  toast('Client ID 已儲存，請點「連線 Google Drive」', 'success');
+}
+
+function driveConnect() {
+  const cid = localStorage.getItem('gapi_client_id');
+  if (!cid) {
+    document.getElementById('drive-setup').style.display = 'block';
+    toast('請先設定 Google API Client ID', 'error'); return;
+  }
+  if (!tokenClient) { toast('Google API 載入中，請稍候', 'error'); return; }
+  if (gapi.client.getToken()) { driveSignOut(); return; }
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+function onDriveToken(resp) {
+  if (resp.error) { toast('Google 登入失敗：' + resp.error, 'error'); return; }
+  sessionStorage.setItem('gapi_token', JSON.stringify(gapi.client.getToken()));
+  setDriveConnected(true);
+  toast('已連線 Google Drive', 'success');
+  driveFindFile();
+}
+
+function driveSignOut() {
+  google.accounts.oauth2.revoke(gapi.client.getToken().access_token);
+  gapi.client.setToken('');
+  sessionStorage.removeItem('gapi_token');
+  setDriveConnected(false);
+  toast('已中斷 Google Drive 連線');
+}
+
+function setDriveConnected(connected) {
+  const badge = document.getElementById('drive-auth-badge');
+  const connectBtn = document.getElementById('drive-connect-btn');
+  const upBtn = document.getElementById('drive-upload-btn');
+  const dlBtn = document.getElementById('drive-download-btn');
+  const sideBtn = document.getElementById('drive-btn');
+  if (badge) badge.textContent = connected ? '✓ 已連線' : '未連線';
+  if (badge) badge.style.background = connected ? 'var(--green-l)' : 'var(--bg)';
+  if (badge) badge.style.color = connected ? 'var(--green)' : 'var(--text3)';
+  if (connectBtn) connectBtn.textContent = connected ? '中斷連線' : '連線 Google Drive';
+  if (upBtn) upBtn.style.display = connected ? '' : 'none';
+  if (dlBtn) dlBtn.style.display = connected ? '' : 'none';
+  if (sideBtn) sideBtn.textContent = connected ? '☁ 已連雲端' : '☁️ 雲端同步';
+}
+
+async function driveFindFile() {
+  try {
+    const r = await gapi.client.drive.files.list({
+      q: `name='${DRIVE_FILE_NAME}' and not trashed`,
+      fields: 'files(id,name,modifiedTime)',
+      spaces: 'drive'
+    });
+    const files = r.result.files;
+    if (files && files.length > 0) {
+      driveFileId = files[0].id;
+      const info = document.getElementById('drive-file-info');
+      if (info) info.textContent = `找到同步檔：${files[0].name}（最後修改：${new Date(files[0].modifiedTime).toLocaleString('zh-TW')}）`;
+    } else {
+      const info = document.getElementById('drive-file-info');
+      if (info) info.textContent = '尚未建立同步檔，點「上傳同步」建立';
+    }
+  } catch (e) { console.warn('Drive find file:', e); }
+}
+
+async function driveUpload() {
+  if (!gapi.client.getToken()) { toast('請先連線 Google Drive', 'error'); return; }
+  const status = document.getElementById('sync-status');
+  if (status) status.textContent = '上傳中…';
+  try {
+    const meta = { exportedAt: new Date().toISOString(), version: '2.0', years: getYears() };
+    const content = JSON.stringify({ meta, ...DB }, null, 2);
+    const blob = new Blob([content], { type: 'application/json' });
+    const form = new FormData();
+    const fileMeta = JSON.stringify({ name: DRIVE_FILE_NAME, mimeType: 'application/json' });
+    form.append('metadata', new Blob([fileMeta], { type: 'application/json' }));
+    form.append('file', blob);
+    const token = gapi.client.getToken().access_token;
+    let url, method;
+    if (driveFileId) {
+      url = `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=multipart`;
+      method = 'PATCH';
+    } else {
+      url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+      method = 'POST';
+    }
+    const resp = await fetch(url, { method, headers: { Authorization: 'Bearer ' + token }, body: form });
+    const result = await resp.json();
+    driveFileId = result.id;
+    if (status) status.textContent = '☁ 已同步 ' + new Date().toLocaleTimeString('zh-TW');
+    toast('資料已上傳 Google Drive', 'success');
+    driveFindFile();
+  } catch (e) { toast('上傳失敗：' + e.message, 'error'); if (status) status.textContent = ''; }
+}
+
+async function driveDownload() {
+  if (!gapi.client.getToken()) { toast('請先連線 Google Drive', 'error'); return; }
+  if (!driveFileId) { await driveFindFile(); if (!driveFileId) { toast('找不到雲端同步檔，請先上傳', 'error'); return; } }
+  const status = document.getElementById('sync-status');
+  if (status) status.textContent = '下載中…';
+  try {
+    const token = gapi.client.getToken().access_token;
+    const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    const raw = await resp.json();
+    const data = raw.meta ? Object.fromEntries(Object.entries(raw).filter(([k]) => k !== 'meta')) : raw;
+    let added = 0, updated = 0;
+    Object.keys(data).forEach(k => {
+      const yr = Number(k);
+      if (!isNaN(yr) && data[k]) { if (DB[yr]) updated++; else added++; DB[yr] = data[k]; }
+    });
+    saveDB(); refreshAll();
+    if (status) status.textContent = '☁ 已同步 ' + new Date().toLocaleTimeString('zh-TW');
+    toast(`下載成功：新增${added}年，更新${updated}年`, 'success');
+  } catch (e) { toast('下載失敗：' + e.message, 'error'); if (status) status.textContent = ''; }
+}
+
+function driveSync() {
+  goPage('import', null); closeSidebar();
+  setTimeout(() => {
+    if (!localStorage.getItem('gapi_client_id')) {
+      document.getElementById('drive-setup').style.display = 'block';
+    }
+  }, 100);
+}
+// ══ end Google Drive ══════════════════════════════════════════
+
+// ── START ──
+init();
+</script>
+</body>
+</html>
