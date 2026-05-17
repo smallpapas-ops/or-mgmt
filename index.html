@@ -1286,7 +1286,7 @@ function parseXlsRows(rows){
     if(ot==='Y')otCount++;
     const tm=Number(c(row,'手術時間(分)'));
     if(tm>0&&tm<600){timeSum+=tm;timeCount++;}
-    const dept=String(c(row,'科別名稱')||'').trim().replace('牙醫部','口腔外科(含牙醫部)').replace(/^口腔外科$/,'口腔外科(含牙醫部)');
+    const dept=String(c(row,'科別名稱')||'').trim().replace('牙醫部','口腔外科(含牙醫部)').replace(/^口腔外科$/,'口腔外科(含牙醫部)').replace('碎石中心','泌尿科').replace('疼痛門診','麻醉科').replace('疼痛科','麻醉科');
     if(dept){
       if(!deptMap[dept])deptMap[dept]={count:0,timeSum:0,timeCount:0,ot:0};
       deptMap[dept].count++;
