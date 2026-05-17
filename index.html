@@ -202,7 +202,11 @@ td input:focus{outline:none;border-color:var(--blue-m)}
   <div class="nav-item" onclick="goPage('import',this)"><span class="nav-icon">📥</span>匯入資料</div>
 
   <div class="sidebar-bottom">
-    <button class="btn btn-sm" style="width:100%;justify-content:center;margin-bottom:6px" onclick="driveSync()" id="drive-btn">☁️ 雲端同步</button>
+    <div id="auto-sync-bar" style="display:none;padding:8px 10px;border-radius:var(--radius-xs);background:var(--teal-l);margin-bottom:6px;font-size:11px;color:var(--teal);display:flex;align-items:center;gap:6px">
+      <span id="auto-sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--teal-m);flex-shrink:0"></span>
+      <span id="auto-sync-txt">自動同步已啟用</span>
+    </div>
+    <button class="btn btn-sm" style="width:100%;justify-content:center;margin-bottom:6px" onclick="manualSync()" id="drive-btn">☁ 立即同步</button>
     <button class="btn btn-sm" style="width:100%;justify-content:center;margin-bottom:6px" onclick="exportData()">💾 匯出備份</button>
     <button class="btn btn-sm" style="width:100%;justify-content:center" onclick="goPage('import',null);closeSidebar()" id="sidebar-install-btn">📲 安裝到手機</button>
     <div id="sync-status" style="font-size:10px;color:var(--text3);text-align:center;margin-top:6px;min-height:14px"></div>
@@ -428,6 +432,31 @@ td input:focus{outline:none;border-color:var(--blue-m)}
         </div>
       </div>
       <div style="margin-top:16px;padding-top:16px;border-top:0.5px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="card-title">⚡ 自動同步設定（推薦）</div>
+          <span id="as-badge" style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--text3)">未設定</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">設定後開啟 App 自動同步，所有裝置即時共用同一份資料</div>
+        <div class="form-group">
+          <label class="form-label">Apps Script 網址（部署後取得）</label>
+          <input class="form-input" id="as-url" placeholder="https://script.google.com/macros/s/...../exec" style="font-size:11px">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-primary" onclick="saveAsUrl()">儲存並連線</button>
+          <button class="btn btn-sm" onclick="testAsUrl()">測試連線</button>
+          <button class="btn btn-sm btn-danger" onclick="clearAsUrl()" style="margin-left:auto">清除</button>
+        </div>
+        <div id="as-result" style="font-size:11px;margin-top:8px;color:var(--text2)"></div>
+        <div style="margin-top:12px;padding:10px 12px;background:var(--blue-l);border-radius:var(--radius-sm);font-size:11px;color:var(--blue);line-height:2">
+          <strong>設定步驟（5分鐘）：</strong><br>
+          1. 開啟 <a href="https://sheets.google.com" target="_blank" style="color:var(--blue-m)">Google Sheets</a> → 建立新試算表，命名「OR同步資料庫」<br>
+          2. 上方選單「擴充功能」→「Apps Script」<br>
+          3. 刪除原有內容，貼入下載的 <strong>OR_Apps_Script後端.gs</strong> 程式碼<br>
+          4. 按「部署」→「新增部署作業」→ 類型選「網頁應用程式」<br>
+          5. 「誰可以存取」選「任何人」→「部署」→ 複製網址貼到上方
+        </div>
+      </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:0.5px solid var(--border)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div class="card-title">Google Drive 雲端同步</div>
           <span id="drive-auth-badge" style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--text3)">未連線</span>
@@ -603,11 +632,14 @@ const GC = isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)';
 const TC = isDark?'#6b6a65':'#9b9a95';
 
 // ── STORAGE ──
-function saveDB(){ localStorage.setItem('or_db_v1', JSON.stringify(DB)); }
+function saveDB(){
+  localStorage.setItem('or_db_v1', JSON.stringify(DB));
+  autoSyncPush();
+}
 function loadDB(){
   try{ const s=localStorage.getItem('or_db_v1'); if(s) DB=JSON.parse(s); }catch(e){}
   if(!DB[114]) DB[114]=JSON.parse(JSON.stringify(BASE_114));
-  saveDB();
+  localStorage.setItem('or_db_v1', JSON.stringify(DB));
 }
 
 function getYear(y){ return DB[y] || null; }
@@ -1746,8 +1778,137 @@ function driveSync() {
 }
 // ══ end Google Drive ══════════════════════════════════════════
 
+
+// ══ Apps Script 自動同步 ══════════════════════════════════
+let asSyncing = false;
+let asPushTimer = null;
+
+function getAsUrl(){ return localStorage.getItem('as_url') || ''; }
+
+function saveAsUrl(){
+  const url = document.getElementById('as-url').value.trim();
+  if(!url || !url.includes('script.google.com')){
+    setAsResult('請填入正確的 Apps Script 網址', 'error'); return;
+  }
+  localStorage.setItem('as_url', url);
+  setAsResult('儲存成功，測試連線中…', 'info');
+  testAsUrl();
+}
+
+function clearAsUrl(){
+  localStorage.removeItem('as_url');
+  document.getElementById('as-url').value = '';
+  updateAsBadge(false);
+  setAsResult('已清除自動同步設定');
+}
+
+async function testAsUrl(){
+  const url = getAsUrl() || document.getElementById('as-url').value.trim();
+  if(!url){ setAsResult('請先填入網址', 'error'); return; }
+  setAsResult('測試中…', 'info');
+  try{
+    const r = await fetch(url + '?action=ping');
+    const d = await r.json();
+    if(d.ok){
+      setAsResult('✓ 連線成功！' + (d.time ? ' 伺服器時間：' + new Date(d.time).toLocaleTimeString('zh-TW') : ''), 'ok');
+      updateAsBadge(true);
+    } else {
+      setAsResult('連線失敗：' + JSON.stringify(d), 'error');
+    }
+  } catch(e){ setAsResult('連線失敗：' + e.message, 'error'); }
+}
+
+function setAsResult(msg, type){
+  const el = document.getElementById('as-result');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.color = type==='ok'?'var(--teal-m)':type==='error'?'var(--red-m)':'var(--text2)';
+}
+
+function updateAsBadge(connected){
+  const badge = document.getElementById('as-badge');
+  const bar   = document.getElementById('auto-sync-bar');
+  const btn   = document.getElementById('drive-btn');
+  if(badge){
+    badge.textContent = connected ? '✓ 已連線' : '未設定';
+    badge.style.background = connected ? 'var(--teal-l)' : 'var(--bg)';
+    badge.style.color = connected ? 'var(--teal)' : 'var(--text3)';
+  }
+  if(bar) bar.style.display = connected ? 'flex' : 'none';
+  if(btn) btn.textContent = connected ? '☁ 立即同步' : '☁️ 雲端同步';
+}
+
+async function autoSyncPull(){
+  const url = getAsUrl(); if(!url) return;
+  try{
+    const r = await fetch(url + '?action=read');
+    const d = await r.json();
+    if(!d.ok || !d.data) return;
+    const remote = d.data;
+    let changed = false;
+    Object.keys(remote).forEach(k=>{
+      const yr = Number(k);
+      if(!isNaN(yr) && remote[k]){
+        DB[yr] = remote[k]; changed = true;
+      }
+    });
+    if(changed){
+      localStorage.setItem('or_db_v1', JSON.stringify(DB));
+      refreshAll();
+      setSyncStatus('☁ 已同步 ' + new Date().toLocaleTimeString('zh-TW'));
+    }
+    updateAsBadge(true);
+  } catch(e){ console.warn('autoSyncPull:', e); }
+}
+
+function autoSyncPush(){
+  const url = getAsUrl(); if(!url) return;
+  if(asPushTimer) clearTimeout(asPushTimer);
+  asPushTimer = setTimeout(async ()=>{
+    if(asSyncing) return;
+    asSyncing = true;
+    setSyncStatus('同步中…');
+    try{
+      const r = await fetch(url + '?action=write', {
+        method: 'POST',
+        body: JSON.stringify(DB),
+        headers: {'Content-Type':'application/json'}
+      });
+      const d = await r.json();
+      if(d.ok) setSyncStatus('☁ 已同步 ' + new Date().toLocaleTimeString('zh-TW'));
+    } catch(e){ setSyncStatus('同步失敗'); console.warn('autoSyncPush:', e); }
+    asSyncing = false;
+  }, 1500);
+}
+
+function setSyncStatus(msg){
+  const el = document.getElementById('sync-status');
+  if(el) el.textContent = msg;
+  const txt = document.getElementById('auto-sync-txt');
+  if(txt) txt.textContent = msg;
+}
+
+function manualSync(){
+  const url = getAsUrl();
+  if(!url){ goPage('import',null); closeSidebar(); return; }
+  setSyncStatus('同步中…');
+  autoSyncPull();
+}
+
+function initAutoSync(){
+  const url = getAsUrl();
+  if(!url) return;
+  const inp = document.getElementById('as-url');
+  if(inp) inp.value = url;
+  updateAsBadge(true);
+  autoSyncPull();
+  setInterval(autoSyncPull, 60000);
+}
+// ══ end Apps Script 自動同步 ═══════════════════════════
+
 // ── START ──
 init();
+initAutoSync();
 </script>
 </body>
 </html>
