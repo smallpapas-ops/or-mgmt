@@ -1286,6 +1286,11 @@ function parseXlsRows(rows){
   const shift={白班:0,小夜:0,大夜:0};
   let otCount=0; let timeSum=0; let timeCount=0;
 
+  const roomMap={};
+  const OR_ROOMS=['01','02','03','05','06','07','08','09','11','12','13','8A'];
+  const colOut=colMap['出手術室時間']!=null?colMap['出手術室時間']:-1;
+  const colDate=colMap['手術日期']!=null?colMap['手術日期']:0;
+
   dataRows.forEach(row=>{
     const m=getRocMonth(c(row,'手術日期'));
     if(m>=1&&m<=12)monthly[m-1]++;
@@ -1306,6 +1311,26 @@ function parseXlsRows(rows){
     if(hr>=8&&hr<=15)shift['白班']++;
     else if(hr>=16&&hr<=23)shift['小夜']++;
     else if(hr>=0&&hr<8)shift['大夜']++;
+    const rm=colRoom>=0?String(row[colRoom]||'').trim().toUpperCase():'';
+    if(OR_ROOMS.includes(rm)&&colOut>=0){
+      const inT=c(row,'進手術室時間'); const outT=row[colOut];
+      const inH=extractHour(inT); const outH=extractHour(outT);
+      const shift2=inH>=8&&inH<=15?'white':inH>=16&&inH<=23?'evening':inH>=0&&inH<8?'night':null;
+      if(shift2){
+        const dateStr=String(c(row,'手術日期')||'').trim();
+        const key=rm+'|'+dateStr+'|'+shift2;
+        if(!roomMap[rm])roomMap[rm]={};
+        if(!roomMap[rm][dateStr])roomMap[rm][dateStr]={white:[],evening:[],night:[]};
+        if(inT&&outT){
+          const inV=parseFloat(String(inT).replace(/[^0-9.:]/g,''));
+          const outV=parseFloat(String(outT).replace(/[^0-9.:]/g,''));
+          const inMin=extractHour(inT)*60+(typeof inT==='object'&&inT instanceof Date?inT.getMinutes():0);
+          const outMin=extractHour(outT)*60+(typeof outT==='object'&&outT instanceof Date?outT.getMinutes():0);
+          const occ=outMin>inMin?outMin-inMin:0;
+          if(occ>0&&occ<600)roomMap[rm][dateStr][shift2].push(occ);
+        }
+      }
+    }
   });
 
   const dept=Object.entries(deptMap).map(([name,d])=>({
@@ -1323,10 +1348,25 @@ function parseXlsRows(rows){
          emerg:types['急診手術'],urgent:types['緊急手術'],crit:types['危急手術'],
          ontime_rate:0,turnover_avg:0,dv_count:0},
     monthly,types,shift,dept,
-    room_util:[],
-    ontime:{overall:0,monthly:Array(12).fill(0),by_room:[]},
+    room_util:(()=>{
+      return OR_ROOMS.map(rm=>{
+        const days=roomMap[rm]||{};
+        const calc=sh=>{
+          const vals=Object.values(days).map(d=>(d[sh]||[]).reduce((a,b)=>a+b,0)).filter(v=>v>0);
+          return vals.length>0?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length/480*1000)/10:0;
+        };
+        return {room:rm,white:calc('white'),evening:calc('evening'),night:calc('night')};
+      }).filter(r=>r.white>0||r.evening>0||r.night>0);
+    })(),
+    ontime:{
+      overall:0,
+      monthly:Array(12).fill(0),
+      by_room:OR_ROOMS.map(rm=>({room:'OR'+rm,rate:0}))
+    },
     emergency:{
-      emerg_monthly:Array(12).fill(0),urgent_monthly:Array(12).fill(0),crit_monthly:Array(12).fill(0),
+      emerg_monthly:(()=>{const a=Array(12).fill(0);dataRows.forEach(r=>{const m=getRocMonth(r[colDate]);const t=String(r[colMap['手術別']]||'');if(m>=1&&m<=12&&t==='急診手術')a[m-1]++;});return a;})(),
+      urgent_monthly:(()=>{const a=Array(12).fill(0);dataRows.forEach(r=>{const m=getRocMonth(r[colDate]);const t=String(r[colMap['手術別']]||'');if(m>=1&&m<=12&&t==='緊急手術')a[m-1]++;});return a;})(),
+      crit_monthly:(()=>{const a=Array(12).fill(0);dataRows.forEach(r=>{const m=getRocMonth(r[colDate]);const t=String(r[colMap['手術別']]||'');if(m>=1&&m<=12&&t==='危急手術')a[m-1]++;});return a;})(),
       emerg_dept:[],urgent_achv_rate:0,urgent_achv:0,urgent_total:0,
       crit_achv_rate:0,crit_achv:0,crit_total:0
     },
