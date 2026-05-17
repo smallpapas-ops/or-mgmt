@@ -1266,7 +1266,16 @@ function parseXlsRows(rows){
   const getRocMonth=v=>{const s=String(v||'').trim();return s.length>=5?parseInt(s.slice(3,5)):null;};
   const getRocYear=v=>{const s=String(v||'').trim();return s.length>=3?parseInt(s.slice(0,3)):null;};
 
-  const dataRows=rows.slice(1).filter(r=>r&&r[colMap['手術日期']]);
+  const colRoom=colMap['房間']!=null?colMap['房間']:-1;
+  const EXCLUDE_ROOMS=['DR','7F','LR','BR'];
+  const dataRows=rows.slice(1).filter(r=>{
+    if(!r||!r[colMap['手術日期']]) return false;
+    if(colRoom>=0){
+      const rm=String(r[colRoom]||'').trim().toUpperCase();
+      if(EXCLUDE_ROOMS.includes(rm)) return false;
+    }
+    return true;
+  });
   if(!dataRows.length)return null;
 
   const year=getRocYear(c(dataRows[0],'手術日期'))||114;
