@@ -1805,19 +1805,22 @@ function clearAsUrl(){
 }
 
 async function testAsUrl(){
-  const url = getAsUrl() || document.getElementById('as-url').value.trim();
+  const url = (getAsUrl() || document.getElementById('as-url').value.trim()).trim();
   if(!url){ setAsResult('請先填入網址', 'error'); return; }
+  if(!url.includes('script.google.com')){ setAsResult('網址格式不正確', 'error'); return; }
   setAsResult('測試中…', 'info');
   try{
-    const r = await fetch(url + '?action=ping');
+    const r = await fetch(url + '?action=ping', {method:'GET'});
     const d = await r.json();
     if(d.ok){
-      setAsResult('✓ 連線成功！' + (d.time ? ' 伺服器時間：' + new Date(d.time).toLocaleTimeString('zh-TW') : ''), 'ok');
+      setAsResult('✓ 連線成功！伺服器時間：' + new Date(d.time).toLocaleTimeString('zh-TW'), 'ok');
       updateAsBadge(true);
     } else {
-      setAsResult('連線失敗：' + JSON.stringify(d), 'error');
+      setAsResult('伺服器回應異常：' + JSON.stringify(d), 'error');
     }
-  } catch(e){ setAsResult('連線失敗：' + e.message, 'error'); }
+  } catch(e){
+    setAsResult('連線失敗：' + e.message + '｜請確認網址正確且已部署為「任何人可存取」', 'error');
+  }
 }
 
 function setAsResult(msg, type){
@@ -1843,7 +1846,7 @@ function updateAsBadge(connected){
 async function autoSyncPull(){
   const url = getAsUrl(); if(!url) return;
   try{
-    const r = await fetch(url + '?action=read');
+    const r = await fetch(url + '?action=read', {method:'GET', mode:'cors'});
     const d = await r.json();
     if(!d.ok || !d.data) return;
     const remote = d.data;
@@ -1860,7 +1863,10 @@ async function autoSyncPull(){
       setSyncStatus('☁ 已同步 ' + new Date().toLocaleTimeString('zh-TW'));
     }
     updateAsBadge(true);
-  } catch(e){ console.warn('autoSyncPull:', e); }
+  } catch(e){
+    console.warn('autoSyncPull:', e);
+    setSyncStatus('同步失敗，請檢查網址');
+  }
 }
 
 function autoSyncPush(){
@@ -1871,13 +1877,14 @@ function autoSyncPush(){
     asSyncing = true;
     setSyncStatus('同步中…');
     try{
-      const r = await fetch(url + '?action=write', {
+      const payload = JSON.stringify({action:'write', data:DB});
+      const r = await fetch(url, {
         method: 'POST',
-        body: JSON.stringify(DB),
-        headers: {'Content-Type':'application/json'}
+        mode: 'no-cors',
+        body: payload,
+        headers: {'Content-Type':'text/plain'}
       });
-      const d = await r.json();
-      if(d.ok) setSyncStatus('☁ 已同步 ' + new Date().toLocaleTimeString('zh-TW'));
+      setSyncStatus('☁ 已同步 ' + new Date().toLocaleTimeString('zh-TW'));
     } catch(e){ setSyncStatus('同步失敗'); console.warn('autoSyncPush:', e); }
     asSyncing = false;
   }, 1500);
