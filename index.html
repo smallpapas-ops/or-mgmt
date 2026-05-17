@@ -1346,21 +1346,16 @@ function parseXlsRows(rows){
     const rm=colRoom>=0?String(row[colRoom]||'').trim().toUpperCase():'';
     if(OR_ROOMS.includes(rm)&&colOut>=0){
       const inT=c(row,'進手術室時間'); const outT=row[colOut];
-      const inH=extractHour(inT); const outH=extractHour(outT);
+      const inH=extractHour(inT);
       const shift2=inH>=8&&inH<=15?'white':inH>=16&&inH<=23?'evening':inH>=0&&inH<8?'night':null;
-      if(shift2){
+      if(shift2&&inT&&outT){
         const dateStr=String(c(row,'手術日期')||'').trim();
-        const key=rm+'|'+dateStr+'|'+shift2;
         if(!roomMap[rm])roomMap[rm]={};
         if(!roomMap[rm][dateStr])roomMap[rm][dateStr]={white:[],evening:[],night:[]};
-        if(inT&&outT){
-          const inV=parseFloat(String(inT).replace(/[^0-9.:]/g,''));
-          const outV=parseFloat(String(outT).replace(/[^0-9.:]/g,''));
-          const inMin=extractHour(inT)*60+(typeof inT==='object'&&inT instanceof Date?inT.getMinutes():0);
-          const outMin=extractHour(outT)*60+(typeof outT==='object'&&outT instanceof Date?outT.getMinutes():0);
-          const occ=outMin>inMin?outMin-inMin:0;
-          if(occ>0&&occ<600)roomMap[rm][dateStr][shift2].push(occ);
-        }
+        const inMin=extractMinTotal(inT);
+        const outMin=extractMinTotal(outT);
+        const occ=outMin>inMin?outMin-inMin:(outMin+1440>inMin?outMin+1440-inMin:0);
+        if(occ>0&&occ<600)roomMap[rm][dateStr][shift2].push(occ);
       }
     }
   });
@@ -1412,9 +1407,16 @@ function parseXlsRows(rows){
 function extractHour(v){
   if(!v)return -1;
   if(v instanceof Date)return v.getHours();
-  const s=String(v);
+  const s=String(v).trim();
   const m=s.match(/(\d{1,2}):(\d{2})/);
   return m?parseInt(m[1]):-1;
+}
+function extractMinTotal(v){
+  if(!v)return -1;
+  if(v instanceof Date)return v.getHours()*60+v.getMinutes();
+  const s=String(v).trim();
+  const m=s.match(/(\d{1,2}):(\d{2})/);
+  return m?parseInt(m[1])*60+parseInt(m[2]):-1;
 }
 function extractHourAlt(v){
   const n=Number(v);
